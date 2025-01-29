@@ -24,8 +24,8 @@ import GlobalHeader from "@/components/GlobalHeader.vue";
 #basicLayout {
 }
 #basicLayout .header {
-  background: red;
   margin-bottom: 20px;
+  box-shadow: #eee 1px 1px 5px;
 }
 #basicLayout .content {
   background: linear-gradient(to right, #bbb, #fff);
