@@ -22,3 +22,6 @@ npm run lint
 
 ### Customize configuration
 See [Configuration Reference](https://cli.vuejs.org/config/).
+
+### Project Log
+See project.md file for details. The project progress and related implementation notes are recorded in this file.

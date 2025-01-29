@@ -1,5 +1,5 @@
 <template>
-  <a-row id="globalHeader" style="margin-bottom: 16px" align="center">
+  <a-row id="globalHeader" align="center" :wrap="false">
     <a-col flex="auto">
       <a-menu
         mode="horizontal"
@@ -16,7 +16,7 @@
             <div class="title">MyOJ</div>
           </div>
         </a-menu-item>
-        <a-menu-item v-for="item in routes" :key="item.path">
+        <a-menu-item v-for="item in visibleRoutes" :key="item.path">
           {{ item.name }}
         </a-menu-item>
       </a-menu>
@@ -28,12 +28,15 @@
 </template>
 
 <script setup lang="ts">
+import ACCESS_ENUM from "@/access/accessEnum";
+import checkAccess from "@/access/checkAccess";
 import { routes } from "@/router/routes";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useStore } from "vuex";
 
 const router = useRouter();
+const store = useStore();
 
 const selectedKey = ref(["/"]);
 
@@ -47,14 +50,26 @@ const doMenuClick = (key: string) => {
   });
 };
 
-const store = useStore();
-console.log(store.state.user.loginUser.userName);
+const visibleRoutes = computed(() => {
+  return routes.filter((item, index) => {
+    if (item.meta?.hideInMenu) {
+      return false;
+    }
+    if (
+      !checkAccess(store.state.user.loginUser, item?.meta?.access as string)
+    ) {
+      return false;
+    }
+    return true;
+  });
+});
 
-// setTimeout(() => {
-//   store.dispatch("user/getLoginUser", {
-//     userName: "wzh",
-//   });
-// }, 3000);
+setTimeout(() => {
+  store.dispatch("user/getLoginUser", {
+    userName: "WZH",
+    userRole: ACCESS_ENUM.ADMIN,
+  });
+}, 3000);
 </script>
 
 <style scoped>
