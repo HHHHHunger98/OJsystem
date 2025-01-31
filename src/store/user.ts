@@ -2,19 +2,28 @@
 
 import ACCESS_ENUM from "@/access/accessEnum";
 import { StoreOptions } from "vuex";
+import { getLoginUserUsingGet } from "../../generated";
 
 export default {
   namespaced: true,
   state: () => ({
     loginUser: {
       userName: "notLogin",
-      userRole: ACCESS_ENUM.NOT_LOGIN,
     },
   }),
   actions: {
-    getLoginUser({ commit, state }, payload) {
+    async getLoginUser({ commit, state }, payload) {
       // todo remote login
-      commit("updateUser", payload);
+      const res = await getLoginUserUsingGet();
+      if (res.status === 200) {
+        commit("updateUser", res.data);
+      } else {
+        commit("updateUser", {
+          ...state.loginUser,
+          userRole: ACCESS_ENUM.NOT_LOGIN,
+        });
+      }
+      console.log(res.status);
     },
   },
   mutations: {

@@ -201,3 +201,171 @@ onMounted(() => {
   doInit();
 });
 ```
+
+## Backend(30.01.2025)
+
+## Backend Framework Initialization
+
+We found a general spring-boot based backend project template from github:
+[SpringBoot Project Initialization Template for Backend Project: https://github.com/LURENYUANSHI/springboot-init-master/tree/master](https://github.com/LURENYUANSHI/springboot-init-master/tree/masterhttps://www.genome.gov/)
+
+### The architecture of the springboot-init template
+
+- `\doc`: for documentation
+- `\sql`: for sql files(`create_table.sql` initialization script for database)
+  - user table
+  - post table
+  - post likes table `post_thumb`: which user liked which post
+  - post added to favorite table `post_favour`: who had added the post to his favorite list
+  - `post_es_mapping.json`: the mapping file to create the database in Elasticsearch.
+- `src\....\annotation`: for annotation files
+- `src\....\aop`: files for AOP, Aspect-oriented programming, for example the global authority check, the global log updating, adding new feature to existing classes without changing the original code.
+- `src\....\common`: some common templates, for example generalized `basicResponse` and `deleteRequest`
+- `src\....\config`: configuration files, for loading the config content defined in `application.yml`, for initializing some setting in Client side.
+- `src\....\constant`: definition of const variables.
+- `src\....\controller`: receive request
+- `src\....\esdao`: similar to the `mapper` in `mybatis`, for manipulating ES.
+- `src\....\exception`: global handler for exceptions.
+- `src\....\job`: task related, scheduled task, one-time task, recurring task.
+- `src\....\manager`: service layer(usually we put the definition of common service here, for instance, third-party API).
+- `src\....\mapper`: data accessing layer of `mybatis`, for managing databases.
+- `src\....\model`: data model for handling the data, entity classes, wrapper classes, enum types.
+- `src\....\service`: service layer, for business logic.
+- `src\....\utils`: utility classes, static methods.
+- `src\test`: unit testing,
+- `MainApplication`: Entrance of the application
+- `Dockerfile`: for building docker images.
+
+## Front-End and Back-End Integration
+
+> how can they be integrated?
+
+**API / Request**, the frontend sends requests to call the API from backend, solution: `Axios`
+
+### Install Axios
+
+> what is axios?
+
+Axios is Promise based HTTP client for the browser and node.js
+
+Documentation: [https://axios-http.com/docs/intro](https://axios-http.com/docs/intro)
+
+```sh
+npm install axios
+```
+
+### Write the code to call back-end!(31.01.2025)
+
+Traditionally, we need to write the code for each request individually. At least a request path.
+
+But there are some automatic ways for doing this:
+[https://github.com/ferdikoomen/openapi-typescript-codegen](https://github.com/ferdikoomen/openapi-typescript-codegen)
+
+> Updated Usage Information: Currently the project `ferdikoomen/openapi-typescript-codegen` has been unmaintained for a while, the alternative can be `@hey-api/openapi-ts`.
+
+```sh
+# using openapi-typescript-codegen
+npm install openapi-typescript-codegen --save-dev
+
+# usage examples:
+
+openapi --input ./example.json --output ./directory --client axios
+
+#using openapi-ts
+npm install @hey-api/client-fetch && npm install @hey-api/openapi-ts -D
+
+#quick use of openapi-ts
+npx @hey-api/openapi-ts \
+  -i path/to/openapi.json \
+  -o src/client \
+  -c @hey-api/client-fetch
+```
+
+Project openapi-ts: [https://github.com/hey-api/openapi-ts](https://github.com/ferdikoomen/openapi-typescript-codegen)
+
+#### generate the client api tsx code.
+
+```sh
+npx @hey-api/openapi-ts -i http://localhost:8121/api/v2/api-docs -o ./generated -c @hey-api/client-axios
+```
+
+the HTTP client for this project is based on Axios, so the client is set to `client-axios`
+
+#### configuration of client
+
+There are two types of way for configuring the request.
+
+1. Configure the generated API:
+
+In `client.gen.ts`, we can specify our client configuration. we need to specify the server url for using the generated API, the client url is http://localhost:8080/ by default
+
+```tsx
+export const client = createClient({
+  ...createConfig(),
+  baseURL: "http://localhost:8121/",
+});
+```
+
+2. Modify the global variables of Axios using a interceptors
+
+Doc: [https://axios-http.com/docs/interceptors](https://axios-http.com/docs/interceptors)
+
+#### Sent request to server using API, for example, get the user login information
+
+```tsx
+actions: {
+  async getLoginUser({ commit, state }, payload) {
+    // todo remote login
+    const res = await getLoginUserUsingGet();
+    if (res.status === 200) {
+      commit("updateUser", res.data);
+    } else {
+      commit("updateUser", {
+        ...state.loginUser,
+        userRole: ACCESS_ENUM.NOT_LOGIN,
+      });
+    }
+    console.log(res.status);
+  },
+},
+```
+
+## User Login Implementation
+
+### Auto Sign-In
+
+- Task 1: Get the user remote login information
+
+For good maintainability, we write code in `store/user.ts`
+
+```tsx
+actions: {
+    async getLoginUser({ commit, state }, payload) {
+      // todo remote login
+      const res = await getLoginUserUsingGet();
+      if (res.status === 200) {
+        commit("updateUser", res.data);
+      } else {
+        commit("updateUser", {
+          ...state.loginUser,
+          userRole: ACCESS_ENUM.NOT_LOGIN,
+        });
+      }
+      console.log(res.status);
+    },
+  },
+```
+
+- task 2: How to trigger the `getLoginUser()`?
+
+we should make it globally, since we run this piece of code for once, and we need to access the result more times in many use cases.
+
+Solutions:
+
+1. route interceptions
+2. application entrance `App.vue`
+3. make this function a common global component
+
+### Global Permission Management Optimization
+
+1. create a new file "access/index.ts"
