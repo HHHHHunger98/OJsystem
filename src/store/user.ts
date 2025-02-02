@@ -15,15 +15,15 @@ export default {
     async getLoginUser({ commit, state }, payload) {
       // todo remote login
       const res = await getLoginUserUsingGet();
-      if (res.status === 200) {
-        commit("updateUser", res.data);
+      if (res.data?.code === 0) {
+        console.log(res.data.data);
+        commit("updateUser", res.data.data);
       } else {
         commit("updateUser", {
           ...state.loginUser,
           userRole: ACCESS_ENUM.NOT_LOGIN,
         });
       }
-      console.log(res.status);
     },
   },
   mutations: {

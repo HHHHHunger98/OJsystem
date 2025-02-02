@@ -22,13 +22,14 @@
       </a-menu>
     </a-col>
     <a-col flex="100px">
-      <div>{{ store.state.user?.loginUser?.userName ?? "未登录" }}</div>
+      <div>
+        {{ store.state.user?.loginUser?.userName ?? "未登錄" }}
+      </div>
     </a-col>
   </a-row>
 </template>
 
 <script setup lang="ts">
-import ACCESS_ENUM from "@/access/accessEnum";
 import checkAccess from "@/access/checkAccess";
 import { routes } from "@/router/routes";
 import { computed, ref } from "vue";
@@ -63,13 +64,6 @@ const visibleRoutes = computed(() => {
     return true;
   });
 });
-
-setTimeout(() => {
-  store.dispatch("user/getLoginUser", {
-    userName: "WZH",
-    userRole: ACCESS_ENUM.ADMIN,
-  });
-}, 3000);
 </script>
 
 <style scoped>

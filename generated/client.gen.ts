@@ -10,4 +10,5 @@ import { createClient, createConfig } from "@hey-api/client-axios";
 export const client = createClient({
   ...createConfig(),
   baseURL: "http://localhost:8121/",
+  withCredentials: true,
 });

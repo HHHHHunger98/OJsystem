@@ -343,15 +343,14 @@ actions: {
     async getLoginUser({ commit, state }, payload) {
       // todo remote login
       const res = await getLoginUserUsingGet();
-      if (res.status === 200) {
-        commit("updateUser", res.data);
+      if (res.data?.code === 0) {
+        commit("updateUser", res.data.data);
       } else {
         commit("updateUser", {
           ...state.loginUser,
           userRole: ACCESS_ENUM.NOT_LOGIN,
         });
       }
-      console.log(res.status);
     },
   },
 ```
@@ -366,6 +365,131 @@ Solutions:
 2. application entrance `App.vue`
 3. make this function a common global component
 
-### Global Permission Management Optimization
+### Global Permission Management Optimization (02.02.2025)
 
 1. create a new file "access/index.ts"
+
+put all the access checking logic into this file as well as the auto login check
+
+```tsx
+router.beforeEach(async (to, from, next) => {
+  // get loginUser state information
+  const loginUser = store.state.user.loginUser;
+
+  // if the user hasn't logged in before, auto login
+  if (!loginUser || !loginUser.userRole) {
+    // get the user state information after the login process done.
+    await store.dispatch("user/getLoginUser");
+  }
+
+  const needAccess = (to.meta?.access as string) ?? ACCESS_ENUM.NOT_LOGIN;
+
+  // when jumps to a page that requires login.
+  if (needAccess !== ACCESS_ENUM.NOT_LOGIN) {
+    // if the user hasn't logged in, jumps to login page.
+    if (!loginUser || !loginUser.userRole) {
+      next("/user/login?redirect=${to.path}");
+      return;
+    }
+    // already logged in, but need admin authority level
+    if (!checkAccess(loginUser, needAccess)) {
+      next("/noAuth");
+      return;
+    }
+  }
+  next();
+});
+```
+
+### Interceptors for configuring the request and response
+
+As we are using the `@hey-api/client-axios` for HTTP requests and responses handling, we are able to modify the requests and responses via the interceptors. See [https://heyapi.dev/openapi-ts/clients/axios](https://heyapi.dev/openapi-ts/clients/axios)
+
+1. create a directory `./plugins`, let's put all the customized plugin files into this directory.
+2. create a script `./plugins/axios.ts` and cat the following configuration at the end of this file.
+
+```tsx
+import { client } from "../../generated/client.gen";
+
+client.instance.interceptors.request.use(
+  // do something
+  function (config) {
+    // Do something before request is sent
+    return config;
+  },
+  function (error) {
+    // Do something with request error
+    return Promise.reject(error);
+  }
+);
+
+// Add a response interceptor
+client.instance.interceptors.response.use(
+  function (response) {
+    console.log("response:", response);
+    // Any status code that lie within the range of 2xx cause this function to trigger
+    // Do something with response data
+    return response;
+  },
+  function (error) {
+    // Any status codes that falls outside the range of 2xx cause this function to trigger
+    // Do something with response error
+    return Promise.reject(error);
+  }
+);
+```
+
+3. And import `plugins` in `main.ts`, Now we are able to customized our requests and responses. for instance, we can print out the response by:
+
+```tsx
+client.instance.interceptors.response.use(function (response) {
+  console.log("response:", response);
+  // Any status code that lie within the range of 2xx cause this function to trigger
+  // Do something with response data
+  return response;
+});
+```
+
+### Optimization of supporting multiple layouts
+
+1. add some new routes in `router/routes.ts`
+
+```tsx
+export const routes: Array<RouteRecordRaw> = [
+  {
+    path: "/user",
+    name: "User",
+    component: UserLayout,
+    children: [
+      {
+        path: "/user/login",
+        name: "User Login",
+        component: UserLoginView,
+      },
+      {
+        path: "/user/register",
+        name: "User Register",
+        component: UserRegisterView,
+      },
+    ],
+  },
+];
+```
+
+2. create new pages: `UserLayout`,`UserLoginView` and `UserRegisterView`
+3. Adding logic for generating pages according to the route with different layouts in `App.vue`.
+
+```tsx
+<div id="app">
+  <template v-if="route.path.startsWith('/user')">
+    <router-view />
+  </template>
+  <template v-else>
+    <BasicLayout />
+  </template>
+</div>
+```
+
+### User login page implementation
+
+1. create the route for user login page.
