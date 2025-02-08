@@ -492,4 +492,406 @@ export const routes: Array<RouteRecordRaw> = [
 
 ### User login page implementation
 
-1. create the route for user login page.
+Like the classic Login Page in many other applications:
+
+1. Introduce a form element in `UserLoginView.vue` to get the user input using `Arco Design`
+  
+```tsx
+<div id="userLoginView">
+    <h1 style="margin-bottom: 32px">Welcome to my Online Judge System!</h1>
+    <a-form
+      style="max-width: 480px; margin: 0 auto"
+      label-align="left"
+      auto-label-width
+      :model="form"
+      @submit="handleSubmit"
+    >
+      <a-form-item
+        field="userAccount"
+        tooltip="Password must be at least 8 characters."
+        label="account"
+      >
+        <a-input
+          v-model="form.userAccount"
+          placeholder="please enter your user account"
+        />
+      </a-form-item>
+      <a-form-item field="userPassword" label="userPassword">
+        <a-input-password
+          v-model="form.userPassword"
+          placeholder="please enter your password"
+        />
+      </a-form-item>
+      <a-form-item>
+        <a-button type="primary" html-type="submit" style="width: 200px"
+          >Login</a-button
+        >
+      </a-form-item>
+    </a-form>
+  </div>
+```
+2. get user input from the form element
+```tsx
+const form = reactive({
+  userAccount: "",
+  userPassword: "",
+} as UserLoginRequest);
+```
+3. When clicking login button, the `handleSubmit()` function will be triggered, the page will jump to root page when the login post request succeed.
+```tsx
+const handleSubmit = async () => {
+  const { data, error } = await userLoginUsingPost({
+    body: form,
+  });
+  if (error) {
+    console.log(error);
+    return;
+  }
+
+  // Login succeed
+  if (data.code === 0) {
+    await store.dispatch("user/getLoginUser");
+    router.push({
+      path: "/",
+      replace: true,
+    });
+  } else {
+    // Login failed
+    Message.error("login failed:" + data.message);
+  }
+};
+```
+## Backend API Implementation
+
+### System Functions Overview(03.02.2025)
+> Checklist of the to-do plan
+1. User Module
+   1. Register(Backend √)
+   2. Login(Frontend √ Backend √)
+2. Problem Module
+   1. Create new problem(Admin)
+   2. Delete problem(Admin)
+   3. Modify problem(Admin)
+   4. Search problem(User)
+   5. Online solution editing(Problem description page)
+3. Online Judge Module
+   1. Submit the solution to judge system(To check correctness of the solution)
+   2. Error handling(Stack overflow, Security, Timeout)
+   3. Code running sandbox(security sandbox)
+   4. Open API(provide a new individual service)
+
+### Tables
+
+#### User table
+```sql
+-- create user table 
+create table if not exists user
+(
+    id           bigint auto_increment comment 'id' primary key,
+    userAccount  varchar(256)                           not null comment 'account name',
+    userPassword varchar(512)                           not null comment 'password',
+    unionId      varchar(256)                           null comment 'WeChat open platform id',
+    mpOpenId     varchar(256)                           null comment 'WeChat Official Account openId',
+    userName     varchar(256)                           null comment 'user name',
+    userAvatar   varchar(1024)                          null comment 'user avatar',
+    userProfile  varchar(512)                           null comment 'user profile',
+    userRole     varchar(256) default 'user'            not null comment 'user role type：user/admin/ban',
+    createTime   datetime     default CURRENT_TIMESTAMP not null comment 'time created',
+    updateTime   datetime     default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment 'update time',
+    isDelete     tinyint      default 0                 not null comment 'is deleted',
+    index idx_unionId (unionId)
+) comment 'user' collate = utf8mb4_unicode_ci;
+```
+
+#### Problem table
+
+A problem item need at least following properties
+
+1. Title
+2. Content
+   1. Introduction
+   2. Input/Output example
+   3. Description
+3. Tags(using json array): for example, difficulty, stack, queue. etc.
+4. Solution
+5. Submit times: for statistic analysis
+
+> judge configuration(json object)
+
+- time limit
+- space limit
+
+> judge cases(json array)
+
+each element representing a test case:
+```json
+[
+  {
+    input: "1, 2",
+    output: "3, 4"
+  },
+]
+```
+
+```sql
+-- problem table
+create table if not exists problem
+(
+    id         bigint auto_increment comment 'id' primary key,
+    title      varchar(512)                       null comment 'title',
+    content    text                               null comment 'content',
+    tags       varchar(1024)                      null comment 'tags array（json array）',
+    solution   text                               null comment 'solution to the problem',
+    submitNum  int      default 0                 not null comment 'total submit times',
+    acceptNum  int      default 0                 not null comment 'total accepted times',
+    judgeCase  text null comment 'input/output cases(json array)',
+    judgeConfig  text null comment 'configuration for judging(json object)'
+    thumbNum   int      default 0                 not null comment 'number of likes',
+    favourNum  int      default 0                 not null comment 'number of add to favorite',
+    userId     bigint                             not null comment 'created user id',
+    createTime datetime default CURRENT_TIMESTAMP not null comment 'created at',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment 'time updated',
+    isDelete   tinyint  default 0                 not null comment 'is deleted',
+    index idx_userId (userId)
+) comment 'post ' collate = utf8mb4_unicode_ci;
+```
+
+#### Submit table
+Who has submitted solution to which problem. And what is the judge result.
+
+1. userId: who has submitted this solution
+2. problemId: which problem
+3. language: c++? Java? or other language
+4. code: the code user submitted
+5. status: judging? to be judged(pending)? succeed? or failed?
+6. judgeInfo: the information of judging, for instance, the failure reason, the time costed, space consumption, etc.(json object)
+```json
+{
+  "message": "program execution information",
+  "time": 1000, // ms
+  "space": 1000,  // kb
+}
+```
+
+> Enumeration of judge information
+
+- Accepted
+- Wrong Answer
+- Compile Error
+- Memory Limit Exceeded
+- Time Limit Exceeded
+- Output Limit Exceeded
+- Presentation Error
+
+```sql
+-- submission table
+create table if not exists problem_submit 
+(
+    id         bigint auto_increment comment 'id' primary key,
+    problemId  bigint                             not null comment 'problem id',
+    userId     bigint                             not null comment 'user id',
+    language   varchar(128)                       not null comment 'solution language',
+    code       text                               not null comment 'user solution',
+    judgeInfo  text                               null comment 'Information for judging(json object)'
+    createTime datetime default CURRENT_TIMESTAMP not null comment 'created at',
+    updateTime datetime default CURRENT_TIMESTAMP not null on update CURRENT_TIMESTAMP comment 'time updated',
+    isDelete   tinyint  default 0                 not null comment 'is deleted',
+    index idx_problemId (problemId),
+    index idx_userId (userId)
+) comment 'problem submission';
+```
+
+> In principle, introduce utility of index only when necessary, single index is better than composite index, that's because index also cost space
+
+### Backend APIs Implementation(07.02.2025)
+
+#### Backend implementation workflow
+1. Design and create the tables based on actual requirement.
+2. Generate the CRUD operations(`mapper` and `service` layers).
+3. Build the `controller layer`, implement basic `CRUD` functionalities and the `permission checking`(copy and paste).
+4. Customize new features based on actual business requirement.
+
+#### Auto generating the Entity Classes, Mapper, and Service layer
+
+To save the time for writing the boilerplate code, we can generate the `entity classes` directly from the database tables.
+
+For achieving this, we can use `mybatis plus` for easy developing.
+
+Documentation: `Mybatis-Plus` [https://mybatis.plus/en/guide/](https://mybatis.plus/en/guide/)
+
+For IDEA user, the plugin `MyBatisX` can also simplify the development:
+1. Install MybatisX plugin in IDEA
+2. Add the database connection in IDEA
+3. Select a target table and right click the table to use MybatisX
+4. Specify the generate options
+
+![mybatisx](./img/mybatisx.PNG "MybatisX Plugin")
+
+Generator option:
+![mybatisxGeneratorOption](./img/mybatisxGeneratorOption.PNG "MybatisX Generator Option")
+
+Create a new dir called model for storing DTOs(data transfer object files), entities, enums,VOs(value objects)
+
+MybatisX Generator Result:
+![mybatisxGeneratorResult](./img/generatorResult.PNG "MybatisX Generator Result")
+
+5. After generation, move the corresponding files to the corresponding folders
+6. Create the controller and DTO, VO, Enums accordingly.
+   
+> Difference between `updateRequest` and `editRequest` in problem table mutation business logic: The former is designed for Administrators, the latter is designed for both user and admin
+
+#### Create the Java classes for json objects
+As mentioned above in the `Tables` chapter, the `judge configuration`, `judge information` and `judge case` are basically `json` files, for convenience, each `json` object should have the corresponding java class, for example the `JudgeInfo`
+```java
+package com.oj.model.dto.problemsubmit;
+
+import lombok.Data;
+
+/**
+ * information for judging
+ */
+@Data
+public class JudgeInfo {
+
+    /**
+     * message: program executing information
+     */
+    private String message;
+
+    /**
+     * time: time costed
+     */
+    private Long time;
+
+    /**
+     * space: storage used
+     */
+    private Long space;
+}
+
+```
+
+#### Define the value object(VO) classes
+
+> Why we need the VO classes?
+
+The main purpose of creating a VO classes is that: we can customize the data transferred to the front-end, so that we can encapsulate the necessary related attributes together and make them immutable. In this way, the data consistency is guaranteed. Also we can save some bandwidth.
+
+#### Implement the Controller Layer(08.02.2025)
+#### Implement the Service Layer
+#### Add 2 static methods to ProblemVo class
+1. `public static Problem voToObj(ProblemVO problemVO)`: a static method for converting the VO object to Problem object 
+2. `public static ProblemVO objToVO(Problem problem)`: a static method for converting the Problem object to VO object 
+
+```java
+    /**
+     * Wrapper class to object
+     * VO object to problem object
+     * @param problemVO
+     * @return
+     */
+    public static Problem voToObj(ProblemVO problemVO) {
+        if (problemVO == null) {
+            return null;
+        }
+        Problem problem = new Problem();
+        BeanUtils.copyProperties(problemVO, problem);
+        List<String> tagList = problemVO.getTags();
+        if (tagList != null) {
+            problem.setTags(JSONUtil.toJsonStr(tagList));
+        }
+        JudgeConfig judgeConfigVO = problemVO.getJudgeConfig();
+        if (judgeConfigVO != null) {
+            problem.setJudgeConfig(JSONUtil.toJsonStr(judgeConfigVO));
+        }
+        return problem;
+    }
+    
+    /**
+     * object to Wrapper class
+     * Problem object to VO object
+     * @param problem
+     * @return
+     */
+    public static ProblemVO objToVo(Problem problem) {
+        if (problem == null) {
+            return null;
+        }
+        ProblemVO problemVO = new ProblemVO();
+        BeanUtils.copyProperties(problem, problemVO);
+        List<String> tagList = JSONUtil.toList(problem.getTags(), String.class);
+        problemVO.setTags(tagList);
+        String judgeConfigStr = problem.getJudgeConfig();
+        problemVO.setJudgeConfig(JSONUtil.toBean(judgeConfigStr, JudgeConfig.class));
+        return problemVO;
+    }
+```
+
+#### Rewrite the `problemSubmit` class and its corresponding service API
+#### Define the `Enumeration` for problem submission
+1. language(c++, java, etc.)
+2. problem submit status(pending, accepted, failed, etc.)
+3. judge information
+
+for instance the enumeration `ProblemSubmitLanguageEnum`
+```java
+package com.oj.model.enums;
+
+import org.apache.commons.lang3.ObjectUtils;
+
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
+
+public enum ProblemSubmitLanguageEnum {
+
+    JAVA("java", "java"),
+    CPLUSPLUS("c++", "c++"),
+    GOLANG("golang", "golang");
+
+    private final String text;
+
+    private final String value;
+
+    ProblemSubmitLanguageEnum(String text, String value) {
+        this.text = text;
+        this.value = value;
+    }
+
+    /**
+     * 获取值列表
+     *
+     * @return
+     */
+    public static List<String> getValues() {
+        return Arrays.stream(values()).map(item -> item.value).collect(Collectors.toList());
+    }
+
+    /**
+     * 根据 value 获取枚举
+     *
+     * @param value
+     * @return
+     */
+    public static ProblemSubmitLanguageEnum getEnumByValue(String value) {
+        if (ObjectUtils.isEmpty(value)) {
+            return null;
+        }
+        for (ProblemSubmitLanguageEnum anEnum : ProblemSubmitLanguageEnum.values()) {
+            if (anEnum.value.equals(value)) {
+                return anEnum;
+            }
+        }
+        return null;
+    }
+
+    public String getValue() {
+        return value;
+    }
+
+    public String getText() {
+        return text;
+    }
+}
+
+```
