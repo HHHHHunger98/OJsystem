@@ -828,6 +828,62 @@ The main purpose of creating a VO classes is that: we can customize the data tra
 ```
 
 #### Rewrite the `problemSubmit` class and its corresponding service API
+
+```java
+/**
+* @author wzh
+* @description database operation on table problem_submit(problem submission)
+* @createDate 2025-02-07 13:41:24
+*/
+@Service
+public class ProblemSubmitServiceImpl extends ServiceImpl<ProblemSubmitMapper, ProblemSubmit>
+    implements ProblemSubmitService{
+    @Resource
+    private ProblemService problemService;
+
+    /**
+     * problem submission
+     *
+     * @param problemSubmitAddRequest the request of problem solution submission
+     * @param loginUser
+     * @return
+     */
+    @Override
+    public long doProblemSubmit(ProblemSubmitAddRequest problemSubmitAddRequest, User loginUser) {
+        // todo check if the submission language is valid
+        String language = problemSubmitAddRequest.getLanguage();
+        ProblemSubmitLanguageEnum problemSubmitLanguageEnum = ProblemSubmitLanguageEnum.getEnumByValue(language);
+        if (problemSubmitLanguageEnum == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR, "The submission language is invalid");
+        }
+
+        long problemId = problemSubmitAddRequest.getProblemId();
+        // the entity must exist and obtain the entity according to the class
+        Problem problem = problemService.getById(problemId);
+        if (problem == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        // Whether the user already submitted the solution to the problem
+        long userId = loginUser.getId();
+        ProblemSubmit problemSubmit = new ProblemSubmit();
+        problemSubmit.setUserId(userId);
+        problemSubmit.setProblemId(problemId);
+        problemSubmit.setCode(problemSubmitAddRequest.getCode());
+        problemSubmit.setLanguage(language);
+        // Set the initial status
+        problemSubmit.setStatus(ProblemSubmitStatusEnum.PENDING.getValue());
+        problemSubmit.setJudgeInfo("{}");
+        boolean save = this.save(problemSubmit);
+        if (!save) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Problem submit failed");
+        }
+        return problemSubmit.getId();
+        
+        // todo refine the submission process
+    }
+}
+```
+
 #### Define the `Enumeration` for problem submission
 1. language(c++, java, etc.)
 2. problem submit status(pending, accepted, failed, etc.)
@@ -835,14 +891,6 @@ The main purpose of creating a VO classes is that: we can customize the data tra
 
 for instance the enumeration `ProblemSubmitLanguageEnum`
 ```java
-package com.oj.model.enums;
-
-import org.apache.commons.lang3.ObjectUtils;
-
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
-
 public enum ProblemSubmitLanguageEnum {
 
     JAVA("java", "java"),
@@ -894,4 +942,68 @@ public enum ProblemSubmitLanguageEnum {
     }
 }
 
+```
+
+#### Test the problem controller APIs (09.02.2025)
+Testing with the swagger UI
+- addProblem:
+![addProblemAPI](./img/addProblemAPI.PNG "addProblem API tested with swagger UI")
+
+##### Optimization of TableId assignment
+```java
+@TableName(value ="problem")
+@Data
+public class Problem {
+    /**
+     * id
+     */
+    @TableId(type = IdType.ASSIGN_ID)
+    private Long id;
+    ...
+}
+```
+In order to get rid of crawlers, we can change the `IdType` from `auto` to `assign_id`
+
+|Feature		|ASSIGN_ID|AUTO|
+|---|---|---|
+|ID Generation|Snowflake Algorithm|Database Auto-Increment|
+|Requires Database Auto-Increment?|❌ No|✅ Yes|
+|Suitable for Distributed Systems?|✅ Yes	|❌ No|
+|ID Type|BIGINT (default)|Typically INT or BIGINT|
+|Dependency on Database for ID?|❌ No|✅ Yes|
+
+- listProblemVOByPage:
+![listProblemByPage](./img/listProblemByPage.PNG "listProblemByPage API tested with swagger UI")
+- deleteProblem:
+![deleteProblem](./img/deleteProblem.PNG "deleteProblem API tested with swagger UI")
+- editProblem:
+![editProblemAPI.PNG](./img/editProblemAPI.PNG "editProblem API tested with swagger UI")
+![updateProblemAPI.PNG](./img/updateProblemAPI.PNG "updateProblem API tested with swagger UI")
+
+#### Implement the problem submission query request API
+
+> Main function:
+
+Query submission records based on `userId`, `problemId`, or `language`.
+
+> Note:
+
+data masking is necessary, only the current user and the admin can access the solution(submitted code)
+
+> Approach: 
+
+Generate the request first and handle the data masking on the response based on the permission level
+```java
+@Override
+    public ProblemSubmitVO getProblemSubmitVO(ProblemSubmit problemSubmit, User loginUser) {
+        ProblemSubmitVO problemSubmitVO = ProblemSubmitVO.objToVo(problemSubmit);
+
+        // data masking: only the current user and the admin can access the solution(submitted code)
+        long userId = loginUser.getId();
+        // data masking
+        if (userId != problemSubmit.getUserId() && !userService.isAdmin(loginUser)) {
+            problemSubmitVO.setCode(null);
+        }
+        return problemSubmitVO;
+    }
 ```

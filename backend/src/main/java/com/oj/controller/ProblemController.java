@@ -10,10 +10,8 @@ import com.oj.common.ResultUtils;
 import com.oj.constant.UserConstant;
 import com.oj.exception.BusinessException;
 import com.oj.exception.ThrowUtils;
-import com.oj.model.dto.problem.ProblemAddRequest;
-import com.oj.model.dto.problem.ProblemEditRequest;
-import com.oj.model.dto.problem.ProblemQueryRequest;
-import com.oj.model.dto.problem.ProblemUpdateRequest;
+import com.oj.model.dto.problem.*;
+import com.oj.model.dto.user.UserQueryRequest;
 import com.oj.model.entity.Problem;
 import com.oj.model.entity.User;
 import com.oj.model.vo.ProblemVO;
@@ -28,8 +26,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 /**
- * Problem接口
- *
+ * Problem APIs
  * @author <a href="https://github.com/liyupi">程序员鱼皮</a>
  * @from <a href="https://yupi.icu">编程导航知识星球</a>
  */
@@ -49,7 +46,7 @@ public class ProblemController {
     // region 增删改查
 
     /**
-     * 创建
+     * add operation
      *
      * @param problemAddRequest
      * @param request
@@ -66,6 +63,14 @@ public class ProblemController {
         if (tags != null) {
             problem.setTags(GSON.toJson(tags));
         }
+        List<JudgeCase> judgeCase = problemAddRequest.getJudgeCase();
+        JudgeConfig judgeConfig = problemAddRequest.getJudgeConfig();
+        if (judgeCase != null) {
+            problem.setJudgeCase(GSON.toJson(judgeCase));
+        }
+        if (judgeConfig != null) {
+            problem.setJudgeConfig(GSON.toJson(judgeConfig));
+        }
         problemService.validProblem(problem, true);
         User loginUser = userService.getLoginUser(request);
         problem.setUserId(loginUser.getId());
@@ -78,7 +83,7 @@ public class ProblemController {
     }
 
     /**
-     * 删除
+     * delete operation
      *
      * @param deleteRequest
      * @param request
@@ -103,7 +108,7 @@ public class ProblemController {
     }
 
     /**
-     * 更新（仅管理员）
+     * update operation (only admin can access)
      *
      * @param problemUpdateRequest
      * @return
@@ -120,10 +125,18 @@ public class ProblemController {
         if (tags != null) {
             problem.setTags(GSON.toJson(tags));
         }
-        // 参数校验
+        List<JudgeCase> judgeCases = problemUpdateRequest.getJudgeCase();
+        JudgeConfig judgeConfig = problemUpdateRequest.getJudgeConfig();
+        if (judgeCases != null) {
+            problem.setJudgeCase(GSON.toJson(judgeCases));
+        }
+        if (judgeConfig != null) {
+            problem.setJudgeConfig(GSON.toJson(judgeConfig));
+        }
+        // parameters validation
         problemService.validProblem(problem, false);
         long id = problemUpdateRequest.getId();
-        // 判断是否存在
+        // check whether it exists
         Problem oldProblem = problemService.getById(id);
         ThrowUtils.throwIf(oldProblem == null, ErrorCode.NOT_FOUND_ERROR);
         boolean result = problemService.updateById(problem);
@@ -211,6 +224,14 @@ public class ProblemController {
         if (tags != null) {
             problem.setTags(GSON.toJson(tags));
         }
+        List<JudgeCase> judgeCases = problemEditRequest.getJudgeCase();
+        JudgeConfig judgeConfig = problemEditRequest.getJudgeConfig();
+        if (judgeCases != null) {
+            problem.setJudgeCase(GSON.toJson(judgeCases));
+        }
+        if (judgeConfig != null) {
+            problem.setJudgeConfig(GSON.toJson(judgeConfig));
+        }
         // 参数校验
         problemService.validProblem(problem, false);
         User loginUser = userService.getLoginUser(request);
@@ -226,4 +247,21 @@ public class ProblemController {
         return ResultUtils.success(result);
     }
 
+    /**
+     * list problems by page(only accessible for admin)
+     *
+     * @param problemQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/list/page")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Page<Problem>> listProblemByPage(@RequestBody ProblemQueryRequest problemQueryRequest,
+                                                   HttpServletRequest request) {
+        long current = problemQueryRequest.getCurrent();
+        long size = problemQueryRequest.getPageSize();
+        Page<Problem> problemPage = problemService.page(new Page<>(current, size),
+                problemService.getQueryWrapper(problemQueryRequest));
+        return ResultUtils.success(problemPage);
+    }
 }

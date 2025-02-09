@@ -1,11 +1,15 @@
 package com.oj.controller;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.oj.common.BaseResponse;
 import com.oj.common.ErrorCode;
 import com.oj.common.ResultUtils;
 import com.oj.exception.BusinessException;
+import com.oj.model.dto.problemsubmit.ProblemSubmitQueryRequest;
 import com.oj.model.dto.problemsubmit.ProblemSubmitAddRequest;
+import com.oj.model.entity.ProblemSubmit;
 import com.oj.model.entity.User;
+import com.oj.model.vo.ProblemSubmitVO;
 import com.oj.service.ProblemSubmitService;
 import com.oj.service.UserService;
 import lombok.extern.slf4j.Slf4j;
@@ -53,4 +57,24 @@ public class ProblemSubmitController {
         return ResultUtils.success(problemSubmitId);
     }
 
+    /**
+     * list problem submission by page
+     * Note: except admin, normal user can only access non-solution part of the submission.
+     * For instance, code,
+     * @param problemSubmitQueryRequest
+     * @param request
+     * @return
+     */
+    @PostMapping("/list/page")
+    public BaseResponse<Page<ProblemSubmitVO>> listProblemSubmitByPage(@RequestBody ProblemSubmitQueryRequest problemSubmitQueryRequest,
+                                                                       HttpServletRequest request) {
+        long current = problemSubmitQueryRequest.getCurrent();
+        long size = problemSubmitQueryRequest.getPageSize();
+        final User loginUser = userService.getLoginUser(request);
+        // get problem submission by page from database
+        Page<ProblemSubmit> problemSubmitPage = problemSubmitService.page(new Page<>(current, size),
+                problemSubmitService.getQueryWrapper(problemSubmitQueryRequest));
+        // Data masking before sending them to frontend
+        return ResultUtils.success(problemSubmitService.getProblemSubmitVOPage(problemSubmitPage, loginUser));
+    }
 }

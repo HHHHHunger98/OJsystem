@@ -1,10 +1,8 @@
 package com.oj.model.vo;
 
-import cn.hutool.json.JSON;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
-import com.google.gson.reflect.TypeToken;
 import com.oj.model.dto.problem.JudgeConfig;
 import com.oj.model.entity.Problem;
 import lombok.Data;
