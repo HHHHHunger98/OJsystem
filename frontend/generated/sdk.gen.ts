@@ -36,6 +36,28 @@ import type {
   ListMyFavourPostByPageUsingPostResponse,
   DoThumbUsingPostData,
   DoThumbUsingPostResponse,
+  AddProblemUsingPostData,
+  AddProblemUsingPostResponse,
+  DeleteProblemUsingPostData,
+  DeleteProblemUsingPostResponse,
+  EditProblemUsingPostData,
+  EditProblemUsingPostResponse,
+  GetProblemByIdUsingGetData,
+  GetProblemByIdUsingGetResponse,
+  GetProblemVoByIdUsingGetData,
+  GetProblemVoByIdUsingGetResponse,
+  ListProblemByPageUsingPostData,
+  ListProblemByPageUsingPostResponse,
+  ListProblemVoByPageUsingPostData,
+  ListProblemVoByPageUsingPostResponse,
+  ListMyProblemVoByPageUsingPostData,
+  ListMyProblemVoByPageUsingPostResponse,
+  UpdateProblemUsingPostData,
+  UpdateProblemUsingPostResponse,
+  DoProblemSubmitUsingPostData,
+  DoProblemSubmitUsingPostResponse,
+  ListProblemSubmitByPageUsingPostData,
+  ListProblemSubmitByPageUsingPostResponse,
   SetMenuUsingGetData,
   SetMenuUsingGetResponse,
   AddUserUsingPostData,
@@ -77,6 +99,11 @@ export type Options<
    * custom client.
    */
   client?: Client;
+  /**
+   * You can pass arbitrary values through the `meta` object. This can be
+   * used to access values that aren't defined as part of the SDK function.
+   */
+  meta?: Record<string, unknown>;
 };
 
 /**
@@ -368,6 +395,226 @@ export const doThumbUsingPost = <ThrowOnError extends boolean = false>(
     ThrowOnError
   >({
     url: "/api/post_thumb/",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * addProblem
+ */
+export const addProblemUsingPost = <ThrowOnError extends boolean = false>(
+  options: Options<AddProblemUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    AddProblemUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/add",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * deleteProblem
+ */
+export const deleteProblemUsingPost = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteProblemUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    DeleteProblemUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/delete",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * editProblem
+ */
+export const editProblemUsingPost = <ThrowOnError extends boolean = false>(
+  options: Options<EditProblemUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    EditProblemUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/edit",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * getProblemById
+ */
+export const getProblemByIdUsingGet = <ThrowOnError extends boolean = false>(
+  options?: Options<GetProblemByIdUsingGetData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetProblemByIdUsingGetResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/get",
+    ...options,
+  });
+};
+
+/**
+ * getProblemVOById
+ */
+export const getProblemVoByIdUsingGet = <ThrowOnError extends boolean = false>(
+  options?: Options<GetProblemVoByIdUsingGetData, ThrowOnError>
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    GetProblemVoByIdUsingGetResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/get/vo",
+    ...options,
+  });
+};
+
+/**
+ * listProblemByPage
+ */
+export const listProblemByPageUsingPost = <
+  ThrowOnError extends boolean = false
+>(
+  options: Options<ListProblemByPageUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    ListProblemByPageUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/list/page",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * listProblemVOByPage
+ */
+export const listProblemVoByPageUsingPost = <
+  ThrowOnError extends boolean = false
+>(
+  options: Options<ListProblemVoByPageUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    ListProblemVoByPageUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/list/page/vo",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * listMyProblemVOByPage
+ */
+export const listMyProblemVoByPageUsingPost = <
+  ThrowOnError extends boolean = false
+>(
+  options: Options<ListMyProblemVoByPageUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    ListMyProblemVoByPageUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/my/list/page/vo",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * updateProblem
+ */
+export const updateProblemUsingPost = <ThrowOnError extends boolean = false>(
+  options: Options<UpdateProblemUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    UpdateProblemUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem/update",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * doProblemSubmit
+ */
+export const doProblemSubmitUsingPost = <ThrowOnError extends boolean = false>(
+  options: Options<DoProblemSubmitUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    DoProblemSubmitUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem_submit/",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options?.headers,
+    },
+  });
+};
+
+/**
+ * listProblemSubmitByPage
+ */
+export const listProblemSubmitByPageUsingPost = <
+  ThrowOnError extends boolean = false
+>(
+  options: Options<ListProblemSubmitByPageUsingPostData, ThrowOnError>
+) => {
+  return (options.client ?? _heyApiClient).post<
+    ListProblemSubmitByPageUsingPostResponse,
+    unknown,
+    ThrowOnError
+  >({
+    url: "/api/problem_submit/list/page",
     ...options,
     headers: {
       "Content-Type": "application/json",

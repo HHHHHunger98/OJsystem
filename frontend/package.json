@@ -8,19 +8,26 @@
     "lint": "vue-cli-service lint"
   },
   "dependencies": {
+    "@babel/core": "^7.26.8",
+    "@babel/plugin-transform-class-properties": "^7.25.9",
+    "@babel/preset-env": "^7.26.8",
     "@bytemd/plugin-gfm": "^1.21.0",
     "@bytemd/plugin-highlight": "^1.21.0",
     "@bytemd/vue-next": "^1.21.0",
     "@hey-api/client-axios": "^0.5.3",
-    "@hey-api/client-fetch": "^0.7.3",
+    "@hey-api/client-fetch": "^0.8.1",
     "axios": "^1.7.9",
     "core-js": "^3.8.3",
+    "md-editor-v3": "^5.2.2",
+    "monaco-editor": "^0.52.2",
+    "monaco-editor-webpack-plugin": "^7.1.0",
     "vue": "^3.2.13",
     "vue-router": "^4.0.3",
     "vuex": "^4.0.2"
   },
   "devDependencies": {
     "@arco-design/web-vue": "^2.56.3",
+    "@babel/plugin-transform-class-static-block": "^7.26.0",
     "@openapitools/openapi-generator-cli": "^2.16.3",
     "@typescript-eslint/eslint-plugin": "^5.4.0",
     "@typescript-eslint/parser": "^5.4.0",

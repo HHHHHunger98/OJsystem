@@ -28,7 +28,7 @@ import GlobalHeader from "@/components/GlobalHeader.vue";
   box-shadow: #eee 1px 1px 5px;
 }
 #basicLayout .content {
-  background: linear-gradient(to right, #bbb, #fff);
+  background: linear-gradient(to right, #efefef, #ffffff);
   margin-bottom: 20px;
   padding: 30px;
 }
@@ -40,5 +40,6 @@ import GlobalHeader from "@/components/GlobalHeader.vue";
   left: 0;
   right: 0;
   text-align: center;
+  z-index: 9999;
 }
 </style>

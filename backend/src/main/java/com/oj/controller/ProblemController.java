@@ -43,7 +43,7 @@ public class ProblemController {
 
     private final static Gson GSON = new Gson();
 
-    // region 增删改查
+    // region CRUD
 
     /**
      * add operation
@@ -143,8 +143,31 @@ public class ProblemController {
         return ResultUtils.success(result);
     }
 
+
     /**
-     * 根据 id 获取
+     * Get problem data by Id without data masking
+     * @param id
+     * @return
+     */
+    @GetMapping("/get")
+    public BaseResponse<Problem> getProblemById(long id,  HttpServletRequest request) {
+        if (id <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        Problem problem = problemService.getById(id);
+        if (problem == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+        // If you are not the creator of the problem, or you are not the admin, you are unable to get the entire problem information
+        User loginUser = userService.getLoginUser(request);
+        if (!problem.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
+            throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+        }
+        return ResultUtils.success(problem);
+    }
+
+    /**
+     * Get problem by Id with data masking
      *
      * @param id
      * @return
@@ -162,7 +185,7 @@ public class ProblemController {
     }
 
     /**
-     * 分页获取列表（封装类）
+     * Get problemVO objects by page
      *
      * @param problemQueryRequest
      * @param request

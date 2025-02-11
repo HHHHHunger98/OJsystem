@@ -495,7 +495,7 @@ export const routes: Array<RouteRecordRaw> = [
 Like the classic Login Page in many other applications:
 
 1. Introduce a form element in `UserLoginView.vue` to get the user input using `Arco Design`
-  
+
 ```tsx
 <div id="userLoginView">
     <h1 style="margin-bottom: 32px">Welcome to my Online Judge System!</h1>
@@ -530,14 +530,18 @@ Like the classic Login Page in many other applications:
     </a-form>
   </div>
 ```
+
 2. get user input from the form element
+
 ```tsx
 const form = reactive({
   userAccount: "",
   userPassword: "",
 } as UserLoginRequest);
 ```
+
 3. When clicking login button, the `handleSubmit()` function will be triggered, the page will jump to root page when the login post request succeed.
+
 ```tsx
 const handleSubmit = async () => {
   const { data, error } = await userLoginUsingPost({
@@ -561,10 +565,13 @@ const handleSubmit = async () => {
   }
 };
 ```
+
 ## Backend API Implementation
 
 ### System Functions Overview(03.02.2025)
+
 > Checklist of the to-do plan
+
 1. User Module
    1. Register(Backend √)
    2. Login(Frontend √ Backend √)
@@ -583,8 +590,9 @@ const handleSubmit = async () => {
 ### Tables
 
 #### User table
+
 ```sql
--- create user table 
+-- create user table
 create table if not exists user
 (
     id           bigint auto_increment comment 'id' primary key,
@@ -624,12 +632,13 @@ A problem item need at least following properties
 > judge cases(json array)
 
 each element representing a test case:
+
 ```json
 [
   {
-    input: "1, 2",
-    output: "3, 4"
-  },
+    "input": "1, 2",
+    "output": "3, 4"
+  }
 ]
 ```
 
@@ -657,6 +666,7 @@ create table if not exists problem
 ```
 
 #### Submit table
+
 Who has submitted solution to which problem. And what is the judge result.
 
 1. userId: who has submitted this solution
@@ -665,11 +675,12 @@ Who has submitted solution to which problem. And what is the judge result.
 4. code: the code user submitted
 5. status: judging? to be judged(pending)? succeed? or failed?
 6. judgeInfo: the information of judging, for instance, the failure reason, the time costed, space consumption, etc.(json object)
+
 ```json
 {
   "message": "program execution information",
   "time": 1000, // ms
-  "space": 1000,  // kb
+  "space": 1000 // kb
 }
 ```
 
@@ -685,7 +696,7 @@ Who has submitted solution to which problem. And what is the judge result.
 
 ```sql
 -- submission table
-create table if not exists problem_submit 
+create table if not exists problem_submit
 (
     id         bigint auto_increment comment 'id' primary key,
     problemId  bigint                             not null comment 'problem id',
@@ -706,6 +717,7 @@ create table if not exists problem_submit
 ### Backend APIs Implementation(07.02.2025)
 
 #### Backend implementation workflow
+
 1. Design and create the tables based on actual requirement.
 2. Generate the CRUD operations(`mapper` and `service` layers).
 3. Build the `controller layer`, implement basic `CRUD` functionalities and the `permission checking`(copy and paste).
@@ -720,6 +732,7 @@ For achieving this, we can use `mybatis plus` for easy developing.
 Documentation: `Mybatis-Plus` [https://mybatis.plus/en/guide/](https://mybatis.plus/en/guide/)
 
 For IDEA user, the plugin `MyBatisX` can also simplify the development:
+
 1. Install MybatisX plugin in IDEA
 2. Add the database connection in IDEA
 3. Select a target table and right click the table to use MybatisX
@@ -737,11 +750,13 @@ MybatisX Generator Result:
 
 5. After generation, move the corresponding files to the corresponding folders
 6. Create the controller and DTO, VO, Enums accordingly.
-   
+
 > Difference between `updateRequest` and `editRequest` in problem table mutation business logic: The former is designed for Administrators, the latter is designed for both user and admin
 
 #### Create the Java classes for json objects
+
 As mentioned above in the `Tables` chapter, the `judge configuration`, `judge information` and `judge case` are basically `json` files, for convenience, each `json` object should have the corresponding java class, for example the `JudgeInfo`
+
 ```java
 package com.oj.model.dto.problemsubmit;
 
@@ -778,10 +793,13 @@ public class JudgeInfo {
 The main purpose of creating a VO classes is that: we can customize the data transferred to the front-end, so that we can encapsulate the necessary related attributes together and make them immutable. In this way, the data consistency is guaranteed. Also we can save some bandwidth.
 
 #### Implement the Controller Layer(08.02.2025)
+
 #### Implement the Service Layer
+
 #### Add 2 static methods to ProblemVo class
-1. `public static Problem voToObj(ProblemVO problemVO)`: a static method for converting the VO object to Problem object 
-2. `public static ProblemVO objToVO(Problem problem)`: a static method for converting the Problem object to VO object 
+
+1. `public static Problem voToObj(ProblemVO problemVO)`: a static method for converting the VO object to Problem object
+2. `public static ProblemVO objToVO(Problem problem)`: a static method for converting the Problem object to VO object
 
 ```java
     /**
@@ -806,7 +824,7 @@ The main purpose of creating a VO classes is that: we can customize the data tra
         }
         return problem;
     }
-    
+
     /**
      * object to Wrapper class
      * Problem object to VO object
@@ -878,18 +896,20 @@ public class ProblemSubmitServiceImpl extends ServiceImpl<ProblemSubmitMapper, P
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Problem submit failed");
         }
         return problemSubmit.getId();
-        
+
         // todo refine the submission process
     }
 }
 ```
 
 #### Define the `Enumeration` for problem submission
+
 1. language(c++, java, etc.)
 2. problem submit status(pending, accepted, failed, etc.)
 3. judge information
 
 for instance the enumeration `ProblemSubmitLanguageEnum`
+
 ```java
 public enum ProblemSubmitLanguageEnum {
 
@@ -945,11 +965,14 @@ public enum ProblemSubmitLanguageEnum {
 ```
 
 #### Test the problem controller APIs (09.02.2025)
+
 Testing with the swagger UI
+
 - addProblem:
-![addProblemAPI](./img/addProblemAPI.PNG "addProblem API tested with swagger UI")
+  ![addProblemAPI](./img/addProblemAPI.PNG "addProblem API tested with swagger UI")
 
 ##### Optimization of TableId assignment
+
 ```java
 @TableName(value ="problem")
 @Data
@@ -962,23 +985,24 @@ public class Problem {
     ...
 }
 ```
+
 In order to get rid of crawlers, we can change the `IdType` from `auto` to `assign_id`
 
-|Feature		|ASSIGN_ID|AUTO|
-|---|---|---|
-|ID Generation|Snowflake Algorithm|Database Auto-Increment|
-|Requires Database Auto-Increment?|❌ No|✅ Yes|
-|Suitable for Distributed Systems?|✅ Yes	|❌ No|
-|ID Type|BIGINT (default)|Typically INT or BIGINT|
-|Dependency on Database for ID?|❌ No|✅ Yes|
+| Feature                           | ASSIGN_ID           | AUTO                    |
+| --------------------------------- | ------------------- | ----------------------- |
+| ID Generation                     | Snowflake Algorithm | Database Auto-Increment |
+| Requires Database Auto-Increment? | ❌ No               | ✅ Yes                  |
+| Suitable for Distributed Systems? | ✅ Yes              | ❌ No                   |
+| ID Type                           | BIGINT (default)    | Typically INT or BIGINT |
+| Dependency on Database for ID?    | ❌ No               | ✅ Yes                  |
 
 - listProblemVOByPage:
-![listProblemByPage](./img/listProblemByPage.PNG "listProblemByPage API tested with swagger UI")
+  ![listProblemByPage](./img/listProblemByPage.PNG "listProblemByPage API tested with swagger UI")
 - deleteProblem:
-![deleteProblem](./img/deleteProblem.PNG "deleteProblem API tested with swagger UI")
+  ![deleteProblem](./img/deleteProblem.PNG "deleteProblem API tested with swagger UI")
 - editProblem:
-![editProblemAPI.PNG](./img/editProblemAPI.PNG "editProblem API tested with swagger UI")
-![updateProblemAPI.PNG](./img/updateProblemAPI.PNG "updateProblem API tested with swagger UI")
+  ![editProblemAPI.PNG](./img/editProblemAPI.PNG "editProblem API tested with swagger UI")
+  ![updateProblemAPI.PNG](./img/updateProblemAPI.PNG "updateProblem API tested with swagger UI")
 
 #### Implement the problem submission query request API
 
@@ -990,9 +1014,10 @@ Query submission records based on `userId`, `problemId`, or `language`.
 
 data masking is necessary, only the current user and the admin can access the solution(submitted code)
 
-> Approach: 
+> Approach:
 
 Generate the request first and handle the data masking on the response based on the permission level
+
 ```java
 @Override
     public ProblemSubmitVO getProblemSubmitVO(ProblemSubmit problemSubmit, User loginUser) {
@@ -1007,3 +1032,223 @@ Generate the request first and handle the data masking on the response based on 
         return problemSubmitVO;
     }
 ```
+
+## Frontend Page Implementation
+
+In this section, the main task will be the implementation of frontend views:
+
+- User register page
+- Problem creation page (for admin)
+- Problem management page (for admin)
+  - Search problem
+  - Delete problem
+  - Edit problem
+  - Quick creation
+- Problem list(for user)
+- Problem description page(online coding page)
+  - Judging status page
+- Problem submit page
+- User info page
+
+### Components requirement
+
+> Firstly, we need to test the some components that we may probably use in the project, so that we can save more debugging time for later pages' development
+
+#### Markdown Editor: bytemd
+
+For enabling the users to edit their solution and notes online, a `Markdown editor` is required.
+
+- Why to integrate a Markdown editor?
+  1. Easy to Write and Read
+  2. Portable & Cross-Platform
+  3. Lightweight & Fast
+  4. Perfect for Version Control
+
+Markdown is simple, lightweight, and widely supported, making it an ideal choice for documentation, note-taking, and web content!
+
+Markdown editor used in here: [`bytemd`](https://github.com/pd4d10/bytemd) https://github.com/pd4d10/bytemd
+
+- Installation
+
+```sh
+npm install @bytemd/vue-next
+```
+
+- Component import
+
+  1. In `main.ts`
+
+```tsx
+import "bytemd/dist/index.css";
+```
+
+2. Create a component `MdEditor.vue` in `\components` dir
+
+```tsx
+<script setup lang="ts">
+import gfm from "@bytemd/plugin-gfm";
+import highlight from "@bytemd/plugin-highlight";
+import { Editor, Viewer } from "@bytemd/vue-next";
+import { ref } from "vue";
+
+const plugins = [
+  gfm(),
+  highlight(),
+  // Add more plugins here
+];
+
+const value = ref("");
+const handleChange = (v: string) => {
+  value.value = v;
+};
+</script>
+
+<template>
+  <Editor :value="value" :plugins="plugins" @change="handleChange" />
+</template>
+
+<style scoped></style>
+```
+
+So we have the Markdown editor introduced!
+![mdEditor](./img/mdEditor.PNG "markdown editor component")
+
+Expose the variable `value` from child component to its parent component for further processing. By defining properties, the child component is more generic for using. You can just let the parent component to handle the value change events.
+
+#### Code Editor: Monaco-editor
+
+For enabling the users to write code directly on our page, a `Code Editor` is required
+
+Recommended code editor: `monaco-code`: [https://github.com/microsoft/monaco-editor](https://github.com/microsoft/monaco-editor)
+
+- Install `Monaco-Editor`
+
+```sh
+npm install monaco-editor
+```
+
+- Install `Monaco Editor Webpack Loader Plugin`
+
+```sh
+npm install monaco-editor-webpack-plugin
+```
+
+> Configure the webpack plugin in `vue.config.js`
+
+```tsx
+const { defineConfig } = require("@vue/cli-service");
+const MonacoWebpackPlugin = require("monaco-editor-webpack-plugin");
+module.exports = defineConfig({
+  transpileDependencies: true,
+  chainWebpack(config) {
+    config.plugin("monaco").use(new MonacoWebpackPlugin());
+  },
+});
+```
+
+- Install some dependencies
+
+```sh
+npm i @babel/plugin-transform-class-static-block @babel/plugin-transform-class-properties
+```
+- Create a new component view `CodeEditor.vue`
+```tsx
+<template>
+  <div id="code-editor" ref="codeEditorRef" style="min-height: 400px"></div>
+  <a-button @click="updateValue">update</a-button>
+</template>
+<script setup lang="ts">
+import * as monaco from "monaco-editor";
+import { onMounted, withDefaults, defineProps, ref, toRaw } from "vue";
+
+const codeEditorRef = ref();
+const codeEditor = ref();
+
+/**
+ * Define the component attributes
+ */
+interface Props {
+  value: string;
+  handleChange: (v: string) => void;
+}
+const props = withDefaults(defineProps<Props>(), {
+  value: () => "",
+  handleChange: (v: string) => {
+    console.log(v);
+  },
+});
+
+const updateValue = () => {
+  if (!codeEditor.value) {
+    return;
+  }
+  toRaw(codeEditor.value).setValue("new");
+};
+onMounted(() => {
+  if (!codeEditorRef.value) {
+    return;
+  }
+  codeEditor.value = monaco.editor.create(codeEditorRef.value, {
+    value: props.value,
+    language: "java",
+    automaticLayout: true,
+    // lineNumbers: "on",
+    // roundedSelection: false,
+    // scrollBeyondLastLine: false,
+    // readOnly: false,
+    theme: "vs-dark",
+    minimap: {
+      enabled: true,
+    },
+  });
+
+  codeEditor.value.onDidChangeModelContent(() => {
+    props.handleChange(toRaw(codeEditor.value).getValue());
+  });
+});
+</script>
+<style></style>
+```
+
+Here we pass the data from child element to parent element using `props` in `Vue.js`
+> Final Example View(Integrated with code editor and markdown editor)
+
+![ExampleView](./img/exampleView.PNG "The example view integrated with code editor and markdown editor")
+
+### Page Implementation
+As we already tested out the necessary components, we can now implement the frontend views
+
+#### Add Problem Page (11.02.2025)
+Backend required input for create a new problem
+```json
+{
+  "content": "",
+  "judgeCase": [
+    {
+      "input": "",
+      "output": ""
+    }
+  ],
+  "judgeConfig": {
+    "spaceLimit": 0,
+    "stackLimit": 0,
+    "timeLimit": 0
+  },
+  "solution": "",
+  "tags": [],
+  "title": ""
+}
+```
+If we want to create a new problem from the client side, we should submit json file like above according to the requirement of the backend API `addProblemUsingPost`, as we generated the client-side API using `@hey-api/openapi-ts`. We should let the user to edit their problem creation
+
+For each item in json file, we should provide related input element. 
+
+- For json key `content` and `solution`, we use the `MdEditor.vue` component to let users editing the problem with markdown editor.
+- Use `Form` component from https://arco.design/vue/component/form
+- Use the `nest form` from https://arco.design/vue/component/form#nest for json keys `judgeConfig` and `judgeCase`.
+- Use the `dynamic form` from https://arco.design/vue/component/form#dynamic for json key `judgeCase`.
+
+We modify the code according to the problem adding requirement: For title
+
+![](./img/problemAddPage.PNG)
+

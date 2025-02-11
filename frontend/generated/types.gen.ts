@@ -12,6 +12,24 @@ export type BaseResponse_Page_PostVo__ = {
   message?: string;
 };
 
+export type BaseResponse_Page_ProblemSubmitVo__ = {
+  code?: number;
+  data?: Page_ProblemSubmitVo_;
+  message?: string;
+};
+
+export type BaseResponse_Page_ProblemVo__ = {
+  code?: number;
+  data?: Page_ProblemVo_;
+  message?: string;
+};
+
+export type BaseResponse_Page_Problem__ = {
+  code?: number;
+  data?: Page_Problem_;
+  message?: string;
+};
+
 export type BaseResponse_Page_userVo__ = {
   code?: number;
   data?: Page_userVo_;
@@ -27,6 +45,18 @@ export type BaseResponse_Page_user__ = {
 export type BaseResponse_PostVo_ = {
   code?: number;
   data?: PostVo;
+  message?: string;
+};
+
+export type BaseResponse_ProblemVo_ = {
+  code?: number;
+  data?: ProblemVo;
+  message?: string;
+};
+
+export type BaseResponse_Problem_ = {
+  code?: number;
+  data?: Problem;
   message?: string;
 };
 
@@ -70,6 +100,23 @@ export type DeleteRequest = {
   id?: number;
 };
 
+export type JudgeCase = {
+  input?: string;
+  output?: string;
+};
+
+export type JudgeConfig = {
+  spaceLimit?: number;
+  stackLimit?: number;
+  timeLimit?: number;
+};
+
+export type JudgeInfo = {
+  message?: string;
+  space?: number;
+  time?: number;
+};
+
 export type LoginUserVo = {
   createTime?: string;
   id?: number;
@@ -93,6 +140,45 @@ export type Page_PostVo_ = {
   orders?: Array<OrderItem>;
   pages?: number;
   records?: Array<PostVo>;
+  searchCount?: boolean;
+  size?: number;
+  total?: number;
+};
+
+export type Page_ProblemSubmitVo_ = {
+  countId?: string;
+  current?: number;
+  maxLimit?: number;
+  optimizeCountSql?: boolean;
+  orders?: Array<OrderItem>;
+  pages?: number;
+  records?: Array<ProblemSubmitVo>;
+  searchCount?: boolean;
+  size?: number;
+  total?: number;
+};
+
+export type Page_ProblemVo_ = {
+  countId?: string;
+  current?: number;
+  maxLimit?: number;
+  optimizeCountSql?: boolean;
+  orders?: Array<OrderItem>;
+  pages?: number;
+  records?: Array<ProblemVo>;
+  searchCount?: boolean;
+  size?: number;
+  total?: number;
+};
+
+export type Page_Problem_ = {
+  countId?: string;
+  current?: number;
+  maxLimit?: number;
+  optimizeCountSql?: boolean;
+  orders?: Array<OrderItem>;
+  pages?: number;
+  records?: Array<Problem>;
   searchCount?: boolean;
   size?: number;
   total?: number;
@@ -190,6 +276,113 @@ export type PostVo = {
   updateTime?: string;
   user?: UserVo;
   userId?: number;
+};
+
+export type Problem = {
+  acceptNum?: number;
+  content?: string;
+  createTime?: string;
+  favourNum?: number;
+  id?: number;
+  isDelete?: number;
+  judgeCase?: string;
+  judgeConfig?: string;
+  solution?: string;
+  submitNum?: number;
+  tags?: string;
+  thumbNum?: number;
+  title?: string;
+  updateTime?: string;
+  userId?: number;
+};
+
+export type ProblemAddRequest = {
+  content?: string;
+  judgeCase?: Array<JudgeCase>;
+  judgeConfig?: JudgeConfig;
+  solution?: string;
+  tags?: Array<string>;
+  title?: string;
+};
+
+export type ProblemEditRequest = {
+  content?: string;
+  id?: number;
+  judgeCase?: Array<JudgeCase>;
+  judgeConfig?: JudgeConfig;
+  solution?: string;
+  tags?: Array<string>;
+  title?: string;
+};
+
+export type ProblemQueryRequest = {
+  content?: string;
+  current?: number;
+  id?: number;
+  pageSize?: number;
+  solution?: string;
+  sortField?: string;
+  sortOrder?: string;
+  tags?: Array<string>;
+  title?: string;
+  userId?: number;
+};
+
+export type ProblemSubmitAddRequest = {
+  code?: string;
+  language?: string;
+  problemId?: number;
+};
+
+export type ProblemSubmitQueryRequest = {
+  current?: number;
+  language?: string;
+  pageSize?: number;
+  problemId?: number;
+  sortField?: string;
+  sortOrder?: string;
+  status?: number;
+  userId?: number;
+};
+
+export type ProblemSubmitVo = {
+  code?: string;
+  createTime?: string;
+  id?: number;
+  judgeInfo?: JudgeInfo;
+  language?: string;
+  problemId?: number;
+  problemVO?: ProblemVo;
+  status?: number;
+  updateTime?: string;
+  userId?: number;
+  userVO?: UserVo;
+};
+
+export type ProblemUpdateRequest = {
+  content?: string;
+  id?: number;
+  judgeCase?: Array<JudgeCase>;
+  judgeConfig?: JudgeConfig;
+  solution?: string;
+  tags?: Array<string>;
+  title?: string;
+};
+
+export type ProblemVo = {
+  acceptNum?: number;
+  content?: string;
+  createTime?: string;
+  favourNum?: number;
+  id?: number;
+  judgeConfig?: JudgeConfig;
+  submitNum?: number;
+  tags?: Array<string>;
+  thumbNum?: number;
+  title?: string;
+  updateTime?: string;
+  userId?: number;
+  userVO?: UserVo;
 };
 
 export type User = {
@@ -849,6 +1042,431 @@ export type DoThumbUsingPostResponses = {
 export type DoThumbUsingPostResponse =
   DoThumbUsingPostResponses[keyof DoThumbUsingPostResponses];
 
+export type AddProblemUsingPostData = {
+  /**
+   * problemAddRequest
+   */
+  body: ProblemAddRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem/add";
+};
+
+export type AddProblemUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type AddProblemUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_long_;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type AddProblemUsingPostResponse =
+  AddProblemUsingPostResponses[keyof AddProblemUsingPostResponses];
+
+export type DeleteProblemUsingPostData = {
+  /**
+   * deleteRequest
+   */
+  body: DeleteRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem/delete";
+};
+
+export type DeleteProblemUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type DeleteProblemUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_boolean_;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type DeleteProblemUsingPostResponse =
+  DeleteProblemUsingPostResponses[keyof DeleteProblemUsingPostResponses];
+
+export type EditProblemUsingPostData = {
+  /**
+   * problemEditRequest
+   */
+  body: ProblemEditRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem/edit";
+};
+
+export type EditProblemUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type EditProblemUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_boolean_;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type EditProblemUsingPostResponse =
+  EditProblemUsingPostResponses[keyof EditProblemUsingPostResponses];
+
+export type GetProblemByIdUsingGetData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * id
+     */
+    id?: number;
+  };
+  url: "/api/problem/get";
+};
+
+export type GetProblemByIdUsingGetErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type GetProblemByIdUsingGetResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_Problem_;
+};
+
+export type GetProblemByIdUsingGetResponse =
+  GetProblemByIdUsingGetResponses[keyof GetProblemByIdUsingGetResponses];
+
+export type GetProblemVoByIdUsingGetData = {
+  body?: never;
+  path?: never;
+  query?: {
+    /**
+     * id
+     */
+    id?: number;
+  };
+  url: "/api/problem/get/vo";
+};
+
+export type GetProblemVoByIdUsingGetErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type GetProblemVoByIdUsingGetResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_ProblemVo_;
+};
+
+export type GetProblemVoByIdUsingGetResponse =
+  GetProblemVoByIdUsingGetResponses[keyof GetProblemVoByIdUsingGetResponses];
+
+export type ListProblemByPageUsingPostData = {
+  /**
+   * problemQueryRequest
+   */
+  body: ProblemQueryRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem/list/page";
+};
+
+export type ListProblemByPageUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type ListProblemByPageUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_Page_Problem__;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type ListProblemByPageUsingPostResponse =
+  ListProblemByPageUsingPostResponses[keyof ListProblemByPageUsingPostResponses];
+
+export type ListProblemVoByPageUsingPostData = {
+  /**
+   * problemQueryRequest
+   */
+  body: ProblemQueryRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem/list/page/vo";
+};
+
+export type ListProblemVoByPageUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type ListProblemVoByPageUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_Page_ProblemVo__;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type ListProblemVoByPageUsingPostResponse =
+  ListProblemVoByPageUsingPostResponses[keyof ListProblemVoByPageUsingPostResponses];
+
+export type ListMyProblemVoByPageUsingPostData = {
+  /**
+   * problemQueryRequest
+   */
+  body: ProblemQueryRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem/my/list/page/vo";
+};
+
+export type ListMyProblemVoByPageUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type ListMyProblemVoByPageUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_Page_ProblemVo__;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type ListMyProblemVoByPageUsingPostResponse =
+  ListMyProblemVoByPageUsingPostResponses[keyof ListMyProblemVoByPageUsingPostResponses];
+
+export type UpdateProblemUsingPostData = {
+  /**
+   * problemUpdateRequest
+   */
+  body: ProblemUpdateRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem/update";
+};
+
+export type UpdateProblemUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type UpdateProblemUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_boolean_;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type UpdateProblemUsingPostResponse =
+  UpdateProblemUsingPostResponses[keyof UpdateProblemUsingPostResponses];
+
+export type DoProblemSubmitUsingPostData = {
+  /**
+   * problemSubmitAddRequest
+   */
+  body: ProblemSubmitAddRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem_submit/";
+};
+
+export type DoProblemSubmitUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type DoProblemSubmitUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_long_;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type DoProblemSubmitUsingPostResponse =
+  DoProblemSubmitUsingPostResponses[keyof DoProblemSubmitUsingPostResponses];
+
+export type ListProblemSubmitByPageUsingPostData = {
+  /**
+   * problemSubmitQueryRequest
+   */
+  body: ProblemSubmitQueryRequest;
+  path?: never;
+  query?: never;
+  url: "/api/problem_submit/list/page";
+};
+
+export type ListProblemSubmitByPageUsingPostErrors = {
+  /**
+   * Unauthorized
+   */
+  401: unknown;
+  /**
+   * Forbidden
+   */
+  403: unknown;
+  /**
+   * Not Found
+   */
+  404: unknown;
+};
+
+export type ListProblemSubmitByPageUsingPostResponses = {
+  /**
+   * OK
+   */
+  200: BaseResponse_Page_ProblemSubmitVo__;
+  /**
+   * Created
+   */
+  201: unknown;
+};
+
+export type ListProblemSubmitByPageUsingPostResponse =
+  ListProblemSubmitByPageUsingPostResponses[keyof ListProblemSubmitByPageUsingPostResponses];
+
 export type SetMenuUsingGetData = {
   body?: never;
   path?: never;
@@ -1371,3 +1989,11 @@ export type UpdateMyUserUsingPostResponses = {
 
 export type UpdateMyUserUsingPostResponse =
   UpdateMyUserUsingPostResponses[keyof UpdateMyUserUsingPostResponses];
+
+export type ClientOptions = {
+  baseURL:
+    | "http://localhost:8121"
+    | (string & {
+        withCredentials: true;
+      });
+};
