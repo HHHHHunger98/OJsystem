@@ -6,9 +6,10 @@
       :data="dataList"
       :pagination="{
         pageSize: queryCondition.pageSize,
-        current: queryCondition.pageNum,
+        current: queryCondition.current,
         total,
       }"
+      @page-change="onPageChange"
     >
       <template #optional="{ record }">
         <a-space>
@@ -27,7 +28,7 @@ import {
   listProblemByPageUsingPost,
   Problem,
 } from "../../../generated/index";
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 
 const show = ref(true);
@@ -35,8 +36,8 @@ const show = ref(true);
 const dataList = ref([]);
 const total = ref(0);
 const queryCondition = ref({
-  pageSize: 10,
-  pageNum: 1,
+  pageSize: 2,
+  current: 1,
 });
 const loadData = async () => {
   const res = await listProblemByPageUsingPost({
@@ -157,5 +158,19 @@ const doEdit = (record: Problem) => {
     },
   });
 };
+
+const onPageChange = (page: number) => {
+  queryCondition.value = {
+    ...queryCondition.value,
+    current: page,
+  };
+};
+/**
+ * listen the change of loadDate, for example:
+ * when the variable queryCondition.current change, then do the page reload
+ */
+watchEffect(() => {
+  loadData();
+});
 </script>
 <style lang="css"></style>

@@ -1443,5 +1443,50 @@ const loadData = async () => {
 1. Optimize the permission control in the route file
 2. Optimize the hidden page in the route file
 
+Use the properties `meta.hideInMenu` and `meta.access` to control in `router/routes.ts`
+```tsx
+meta: {
+  hideInMenu: true,
+  access: ACCESS_ENUM.ADMIN,
+},
+```
+
 > Bug fixing
+
+1. when doing the listProblemByPage, unable to change page
+
+solution: bind the `@page-change` event to trigger a value change of `queryCondition.value.current`,
+listen the change of `queryCondition`, when changing, then trigger the `loadData()` to reload the data in other page
+
+```tsx
+const onPageChange = (page: number) => {
+  queryCondition.value = {
+    ...queryCondition.value,
+    current: page,
+  };
+};
+/**
+ * listen the change of loadDate, for example:
+ * when the variable queryCondition.current change, then do the page reload
+ */
+watchEffect(() => {
+  loadData();
+});
+```
+
+2. After logged in, when reloading the page, always jumps to the login page
+
+Causes: After user successfully logged in, the `loginUser` is still `ACCESS_ENUM.NOT_LOGIN`
+
+Solution: after user logged in, change the `loginUser` value to corresponding `loginUser.userRole`
+
+```tsx
+// if the user hasn't logged in before, auto login
+if (!loginUser || !loginUser.userRole) {
+  // get the user state information after the login process done.
+  await store.dispatch("user/getLoginUser");
+  // update the loginUser after user login.
+  loginUser = store.state.user.loginUser;
+}
+```
 

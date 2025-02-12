@@ -40,7 +40,7 @@ export const routes: Array<RouteRecordRaw> = [
     name: "Add Problem",
     component: AddProblemView,
     meta: {
-      access: ACCESS_ENUM.ADMIN,
+      access: ACCESS_ENUM.USER,
     },
   },
   {
@@ -48,6 +48,7 @@ export const routes: Array<RouteRecordRaw> = [
     name: "Update Problem",
     component: AddProblemView,
     meta: {
+      hideInMenu: true,
       access: ACCESS_ENUM.ADMIN,
     },
   },
@@ -59,34 +60,37 @@ export const routes: Array<RouteRecordRaw> = [
       access: ACCESS_ENUM.ADMIN,
     },
   },
-  {
-    path: "/hidden",
-    name: "Hidden",
-    component: ExampleView,
-    meta: {
-      hideInMenu: true,
-    },
-  },
-  {
-    path: "/admin",
-    name: "Administrator",
-    component: AdminView,
-    meta: {
-      access: ACCESS_ENUM.ADMIN,
-    },
-  },
+  // {
+  //   path: "/hidden",
+  //   name: "Hidden",
+  //   component: ExampleView,
+  //   meta: {
+  //     hideInMenu: true,
+  //   },
+  // },
+  // {
+  //   path: "/admin",
+  //   name: "Administrator",
+  //   component: AdminView,
+  //   meta: {
+  //     access: ACCESS_ENUM.ADMIN,
+  //   },
+  // },
   {
     path: "/noAuth",
     name: "NoAuthority",
     component: NoAuthView,
+    meta: {
+      hideInMenu: true,
+    },
   },
-  {
-    path: "/about",
-    name: "About",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/AboutView.vue"),
-  },
+  // {
+  //   path: "/about",
+  //   name: "About",
+  //   // route level code-splitting
+  //   // this generates a separate chunk (about.[hash].js) for this route
+  //   // which is lazy-loaded when the route is visited.
+  //   component: () =>
+  //     import(/* webpackChunkName: "about" */ "../views/AboutView.vue"),
+  // },
 ];

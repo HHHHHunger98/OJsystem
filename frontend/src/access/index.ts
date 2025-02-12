@@ -5,12 +5,13 @@ import checkAccess from "./checkAccess";
 
 router.beforeEach(async (to, from, next) => {
   // get loginUser state information
-  const loginUser = store.state.user.loginUser;
+  let loginUser = store.state.user.loginUser;
 
   // if the user hasn't logged in before, auto login
   if (!loginUser || !loginUser.userRole) {
     // get the user state information after the login process done.
     await store.dispatch("user/getLoginUser");
+    loginUser = store.state.user.loginUser;
   }
 
   const needAccess = (to.meta?.access as string) ?? ACCESS_ENUM.NOT_LOGIN;
@@ -18,7 +19,11 @@ router.beforeEach(async (to, from, next) => {
   // when jumps to a page that requires login.
   if (needAccess !== ACCESS_ENUM.NOT_LOGIN) {
     // if the user hasn't logged in, jumps to login page.
-    if (!loginUser || !loginUser.userRole) {
+    if (
+      !loginUser ||
+      !loginUser.userRole ||
+      loginUser.userRole === ACCESS_ENUM.NOT_LOGIN
+    ) {
       next("/user/login?redirect=${to.path}");
       return;
     }
