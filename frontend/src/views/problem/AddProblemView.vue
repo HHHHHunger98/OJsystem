@@ -54,7 +54,6 @@
               :style="{ width: '320px' }"
               placeholder="Please Enter The Stack Limit"
               v-model="form.judgeConfig.stackLimit"
-              :default-value="500"
               mode="button"
               min="0"
             />
@@ -119,25 +118,25 @@
 import MdEditor from "@/components/MdEditor.vue";
 import {
   addProblemUsingPost,
+  getProblemByIdUsingGet,
   ProblemAddRequest,
+  ProblemQueryRequest,
+  updateProblemUsingPost,
 } from "../../../generated/index";
-import { reactive } from "vue";
+import { onMounted, reactive, ref } from "vue";
 import { Message } from "@arco-design/web-vue";
+import { useRoute } from "vue-router";
 
-const contentValueChange = (v: string) => {
-  form.content = v;
-};
-const solutionValueChange = (v: string) => {
-  form.solution = v;
-};
+const route = useRoute();
+const updatePage = route.path.includes("update");
 
-const form = reactive<ProblemAddRequest>({
-  title: "A+B",
-  content: "hhhahahah",
+let form = ref({
+  title: "",
+  content: "",
   judgeCase: [
     {
-      input: "1,2",
-      output: "3,4",
+      input: "",
+      output: "",
     },
   ],
   judgeConfig: {
@@ -145,16 +144,81 @@ const form = reactive<ProblemAddRequest>({
     stackLimit: 1000,
     timeLimit: 1000,
   },
-  solution: "your",
-  tags: ["java", "easy"],
+  solution: "",
+  tags: [],
 });
+
+/**
+ * Get problem data to be updated by Id
+ */
+const loadData = async () => {
+  const problemId = route.query.id as any;
+  if (!problemId) {
+    return;
+  } else {
+    const res = await getProblemByIdUsingGet({
+      query: {
+        id: problemId,
+      },
+    });
+    if (res.status === 200) {
+      if (res.data?.code === 0) {
+        /**
+         * JSON to js object
+         * Best way to do the conversion is to put it at the backend,
+         * implement a API for requesting problem data by id and handling the type conversion
+         */
+        form.value = res.data.data as any;
+        if (!form.value.judgeConfig) {
+          form.value.judgeConfig = {
+            spaceLimit: 1000,
+            stackLimit: 1000,
+            timeLimit: 1000,
+          };
+        } else {
+          form.value.judgeConfig = JSON.parse(form.value.judgeConfig as any);
+        }
+        if (!form.value.judgeCase) {
+          form.value.judgeCase = [
+            {
+              input: "",
+              output: "",
+            },
+          ];
+        } else {
+          form.value.judgeCase = JSON.parse(form.value.judgeCase as any);
+        }
+        if (!form.value.tags) {
+          form.value.tags = [];
+        } else {
+          form.value.tags = JSON.parse(form.value.tags as any);
+        }
+      } else {
+        Message.error("Get problem data failed" + res.data?.message);
+      }
+    } else {
+      Message.error("No response from server");
+    }
+  }
+};
+
+onMounted(() => {
+  loadData();
+});
+
+const contentValueChange = (v: string) => {
+  form.value.content = v;
+};
+const solutionValueChange = (v: string) => {
+  form.value.solution = v;
+};
 
 /**
  * Add new judge case
  */
 const handleAdd = () => {
-  if (form.judgeCase) {
-    form.judgeCase.push({
+  if (form.value.judgeCase) {
+    form.value.judgeCase.push({
       input: "",
       output: "",
     });
@@ -164,26 +228,44 @@ const handleAdd = () => {
  * Delete judge case
  */
 const handleDelete = (index: number) => {
-  if (form.judgeCase) {
-    form.judgeCase.splice(index, 1);
+  if (form.value.judgeCase) {
+    form.value.judgeCase.splice(index, 1);
   }
 };
 
 const doSubmit = async () => {
-  console.log(form);
-  const res = await addProblemUsingPost({
-    body: form,
-  });
-  console.log(res);
-  if (res.status === 200) {
-    if (res.data.code === 0) {
-      Message.success("Problem adding succeed");
-      console.log("okay");
+  console.log(form.value);
+
+  if (updatePage) {
+    const res = await updateProblemUsingPost({
+      body: form.value,
+    });
+    console.log(res);
+    if (res.status === 200) {
+      if (res.data?.code === 0) {
+        Message.success("Problem updating succeed");
+        console.log("okay");
+      } else {
+        Message.error("Problem updating failed");
+      }
     } else {
-      Message.error("Problem adding failed");
+      Message.error("No response from server");
     }
   } else {
-    Message.error("No response from server");
+    const res = await addProblemUsingPost({
+      body: form.value,
+    });
+    console.log(res);
+    if (res.status === 200) {
+      if (res.data?.code === 0) {
+        Message.success("Problem adding succeed");
+        console.log("okay");
+      } else {
+        Message.error("Problem adding failed");
+      }
+    } else {
+      Message.error("No response from server");
+    }
   }
 };
 </script>

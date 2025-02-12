@@ -1151,7 +1151,9 @@ module.exports = defineConfig({
 ```sh
 npm i @babel/plugin-transform-class-static-block @babel/plugin-transform-class-properties
 ```
+
 - Create a new component view `CodeEditor.vue`
+
 ```tsx
 <template>
   <div id="code-editor" ref="codeEditorRef" style="min-height: 400px"></div>
@@ -1211,15 +1213,19 @@ onMounted(() => {
 ```
 
 Here we pass the data from child element to parent element using `props` in `Vue.js`
+
 > Final Example View(Integrated with code editor and markdown editor)
 
 ![ExampleView](./img/exampleView.PNG "The example view integrated with code editor and markdown editor")
 
 ### Page Implementation
+
 As we already tested out the necessary components, we can now implement the frontend views
 
 #### Add Problem Page (11.02.2025)
+
 Backend required input for create a new problem
+
 ```json
 {
   "content": "",
@@ -1239,9 +1245,10 @@ Backend required input for create a new problem
   "title": ""
 }
 ```
+
 If we want to create a new problem from the client side, we should submit json file like above according to the requirement of the backend API `addProblemUsingPost`, as we generated the client-side API using `@hey-api/openapi-ts`. We should let the user to edit their problem creation
 
-For each item in json file, we should provide related input element. 
+For each item in json file, we should provide related input element.
 
 - For json key `content` and `solution`, we use the `MdEditor.vue` component to let users editing the problem with markdown editor.
 - Use `Form` component from https://arco.design/vue/component/form
@@ -1251,4 +1258,190 @@ For each item in json file, we should provide related input element.
 We modify the code according to the problem adding requirement: For title
 
 ![](./img/problemAddPage.PNG)
+
+#### Manage Problem Page (12.02.2025)
+
+Admin can manage problems on the management page
+The implementation of manage problem page:
+
+1. Use Form element from arco design: https://arco.design/vue/component/form
+2. Query for the problem data from database via API `listProblemByPageUsingPost`
+
+```tsx
+// define the query configuration
+const queryCondition = ref({
+  pageSize: 10,
+  pageNum: 1,
+});
+```
+
+3. Specify the Form layout, columns and rows
+4. Loading the query result
+
+```tsx
+const loadData = async () => {
+  const res = await listProblemByPageUsingPost({
+    body: queryCondition.value,
+  });
+  if (res.status === 200) {
+    if (res.data.code === 0) {
+      dataList.value = res.data.data.records;
+      total.value = res.data.data.total;
+    } else {
+      Message.error("Failed:" + res.data.message);
+    }
+  } else {
+    Message.error("Connecting to server error");
+  }
+};
+```
+
+5. Adjust the data format(json)
+   1. use the preset properties from arco design
+   2. or customize the rendering on our own
+6. Add two Buttons for the editing and delete
+
+```tsx
+<template #optional="{ record }">
+  <a-space>
+    <a-button type="primary" @click="doEdit(record)">Edit</a-button>
+    <a-button status="danger" @click="doDelete(record)">Delete</a-button>
+  </a-space>
+</template>
+
+const router = useRouter();
+
+const doDelete = async (record: Problem) => {
+  const res = await deleteProblemUsingPost({
+    body: {
+      id: record.id,
+    },
+  });
+  if (res.status === 200) {
+    if (res.data.code === 0) {
+      Message.success("Successfully deleted");
+      // Updata Current Problem List View.
+      loadData();
+    } else {
+      Message.error("Delete Operation Failed:" + res.data.message);
+    }
+  } else {
+    Message.error("Connecting to server error");
+  }
+};
+const doEdit = (record: Problem) => {
+  router.push({
+    path: "/update/problem",
+    query: {
+      id: record.id,
+    },
+  });
+};
+```
+
+> Problem Manage Page
+
+![](./img/problemManagePage.PNG)
+
+#### Update Problem Page
+
+Due to the similarity of `update problem page` and `add problem page`
+They are the same `Form` element for editing the problem
+So for reusing the component, There is no need to create a new page layout for 
+the update page, we can just reuse the add problem page
+> key points of reusing
+
+1. How to distinguish between the update and add page
+   1. By route(`/add/problem` and `/update/problem`)
+   2. By request header(`id=1`)
+2. Compare to `add problem page`, the update page should do at least following jobs:
+   1. When loading the update page, should also load the current problem data
+   2. when clicking submit button, the request API should be `UpdateProblemUsingPostDate`
+
+> Load current problem data when click edit button
+
+1. Implement a `getProblemById` api at backend `backend\src\main\java\com\oj\controller\ProblemController.java`
+```java
+@GetMapping("/get")
+public BaseResponse<Problem> getProblemById(long id,  HttpServletRequest request) {
+    if (id <= 0) {
+        throw new BusinessException(ErrorCode.PARAMS_ERROR);
+    }
+    Problem problem = problemService.getById(id);
+    if (problem == null) {
+        throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+    }
+    // If you are not the creator of the problem, or you are not the admin, you are unable to get the entire problem information
+    User loginUser = userService.getLoginUser(request);
+    if (!problem.getUserId().equals(loginUser.getId()) && !userService.isAdmin(loginUser)) {
+        throw new BusinessException(ErrorCode.NO_AUTH_ERROR);
+    }
+    return ResultUtils.success(problem);
+}
+```
+2. The data is not masked, we need to convert the JSON file to js object in `frontend\src\views\problem\AddProblemView.vue`
+```tsx
+const loadData = async () => {
+  const problemId = route.query.id as any;
+  if (!problemId) {
+    return;
+  } else {
+    const res = await getProblemByIdUsingGet({
+      query: {
+        id: problemId,
+      },
+    });
+    if (res.status === 200) {
+      if (res.data?.code === 0) {
+        /**
+         * JSON to js object
+         * Best way to do the conversion is to put it at the backend,
+         * implement a API for requesting problem data by id and handling the type conversion
+         */
+        form.value = res.data.data as any;
+        if (!form.value.judgeConfig) {
+          form.value.judgeConfig = {
+            spaceLimit: 1000,
+            stackLimit: 1000,
+            timeLimit: 1000,
+          };
+        } else {
+          form.value.judgeConfig = JSON.parse(form.value.judgeConfig as any);
+        }
+        if (!form.value.judgeCase) {
+          form.value.judgeCase = [
+            {
+              input: "",
+              output: "",
+            },
+          ];
+        } else {
+          form.value.judgeCase = JSON.parse(form.value.judgeCase as any);
+        }
+        if (!form.value.tags) {
+          form.value.tags = [];
+        } else {
+          form.value.tags = JSON.parse(form.value.tags as any);
+        }
+      } else {
+        Message.error("Get problem data failed" + res.data?.message);
+      }
+    } else {
+      Message.error("No response from server");
+    }
+  }
+};
+``` 
+3. Use route information to check which API should we call, `updateProblemUsingPost` or `addProblemUsingPost`
+
+![](./img/problemUpdatePage.PNG)
+
+#### Frontend Part Optimization
+
+> Page Optimization
+
+1. Optimize the permission control in the route file
+2. Optimize the hidden page in the route file
+
+> Bug fixing
 
