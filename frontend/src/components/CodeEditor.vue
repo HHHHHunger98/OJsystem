@@ -1,43 +1,59 @@
 <template>
   <div id="code-editor" ref="codeEditorRef" style="min-height: 400px"></div>
-  <a-button @click="updateValue">update</a-button>
 </template>
 <script setup lang="ts">
 import * as monaco from "monaco-editor";
-import { onMounted, withDefaults, defineProps, ref, toRaw } from "vue";
+import { onMounted, withDefaults, defineProps, ref, toRaw, watch } from "vue";
 
 const codeEditorRef = ref();
-const codeEditor = ref();
+let codeEditor = ref();
 
 /**
  * Define the component attributes
  */
 interface Props {
   value: string;
+  language?: string;
   handleChange: (v: string) => void;
 }
 const props = withDefaults(defineProps<Props>(), {
   value: () => "",
+  language: () => "cpp",
   handleChange: (v: string) => {
     console.log(v);
   },
 });
 
-const updateValue = () => {
-  if (!codeEditor.value) {
-    return;
-  }
-  toRaw(codeEditor.value).setValue("new");
-};
+// watch(
+//   () => props.language,
+//   () => {
+//     document.getElementById("code-editor").innerHTML = "";
+//     codeEditor.value = undefined;
+//     codeEditor.value = monaco.editor.create(codeEditorRef.value, {
+//       value: props.value,
+//       language: props.language,
+//       automaticLayout: true,
+//       lineNumbers: "on",
+//       // roundedSelection: false,
+//       // scrollBeyondLastLine: false,
+//       // readOnly: false,
+//       theme: "vs-dark",
+//       minimap: {
+//         enabled: true,
+//       },
+//     });
+//   }
+// );
+
 onMounted(() => {
   if (!codeEditorRef.value) {
     return;
   }
   codeEditor.value = monaco.editor.create(codeEditorRef.value, {
     value: props.value,
-    language: "java",
+    language: props.language,
     automaticLayout: true,
-    // lineNumbers: "on",
+    lineNumbers: "on",
     // roundedSelection: false,
     // scrollBeyondLastLine: false,
     // readOnly: false,

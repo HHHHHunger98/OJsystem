@@ -119,11 +119,9 @@ import MdEditor from "@/components/MdEditor.vue";
 import {
   addProblemUsingPost,
   getProblemByIdUsingGet,
-  ProblemAddRequest,
-  ProblemQueryRequest,
   updateProblemUsingPost,
 } from "../../../generated/index";
-import { onMounted, reactive, ref } from "vue";
+import { onMounted, ref } from "vue";
 import { Message } from "@arco-design/web-vue";
 import { useRoute } from "vue-router";
 

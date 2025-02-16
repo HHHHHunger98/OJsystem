@@ -1,28 +1,34 @@
 <template>
   <div id="manageProblemView" style="align-items: center">
     <h2 style="text-align: center">Problem Management</h2>
-    <a-table
-      :columns="columns"
-      :data="dataList"
-      :pagination="{
-        pageSize: queryCondition.pageSize,
-        current: queryCondition.current,
-        total,
-      }"
-      @page-change="onPageChange"
-    >
-      <template #optional="{ record }">
-        <a-space>
-          <a-button type="primary" @click="doEdit(record)">Edit</a-button>
-          <a-button status="danger" @click="doDelete(record)">Delete</a-button>
-        </a-space>
-      </template>
-    </a-table>
-    <span class="arco-pagination-total">{{ total }} Records</span>
+    <a-config-provider :locale="enUS">
+      <a-table
+        :columns="columns"
+        :data="dataList"
+        :pagination="{
+          pageSize: queryCondition.pageSize,
+          current: queryCondition.current,
+          total,
+          showTotal: true,
+          showJumper: true,
+        }"
+        @page-change="onPageChange"
+      >
+        <template #optional="{ record }">
+          <a-space>
+            <a-button type="primary" @click="doEdit(record)">Edit</a-button>
+            <a-button status="danger" @click="doDelete(record)"
+              >Delete</a-button
+            >
+          </a-space>
+        </template>
+      </a-table>
+    </a-config-provider>
   </div>
 </template>
 <script setup lang="ts">
 import Message from "@arco-design/web-vue/es/message";
+import enUS from "@arco-design/web-vue/es/locale/lang/en-us";
 import {
   deleteProblemUsingPost,
   listProblemByPageUsingPost,
@@ -32,23 +38,29 @@ import { onMounted, ref, watchEffect } from "vue";
 import { useRouter } from "vue-router";
 
 const show = ref(true);
+const router = useRouter();
 
 const dataList = ref([]);
 const total = ref(0);
 const queryCondition = ref({
-  pageSize: 2,
+  pageSize: 10,
   current: 1,
 });
 const loadData = async () => {
-  const res = await listProblemByPageUsingPost({
+  const { data, status } = await listProblemByPageUsingPost({
     body: queryCondition.value,
   });
-  if (res.status === 200) {
-    if (res.data.code === 0) {
-      dataList.value = res.data.data.records;
-      total.value = res.data.data.total;
+  if (status === 200) {
+    if (data?.code === 0) {
+      dataList.value = data.data.records;
+      total.value = data.data.total;
     } else {
-      Message.error("Failed:" + res.data.message);
+      Message.error("Failed:" + data?.message);
+      if (data?.code === 40100) {
+        router.push({
+          path: "/user/login",
+        });
+      }
     }
   } else {
     Message.error("Connecting to server error");
@@ -129,8 +141,6 @@ const columns = [
     slotName: "optional",
   },
 ];
-
-const router = useRouter();
 
 const doDelete = async (record: Problem) => {
   const res = await deleteProblemUsingPost({

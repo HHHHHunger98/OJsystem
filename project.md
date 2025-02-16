@@ -1347,8 +1347,9 @@ const doEdit = (record: Problem) => {
 
 Due to the similarity of `update problem page` and `add problem page`
 They are the same `Form` element for editing the problem
-So for reusing the component, There is no need to create a new page layout for 
+So for reusing the component, There is no need to create a new page layout for
 the update page, we can just reuse the add problem page
+
 > key points of reusing
 
 1. How to distinguish between the update and add page
@@ -1361,6 +1362,7 @@ the update page, we can just reuse the add problem page
 > Load current problem data when click edit button
 
 1. Implement a `getProblemById` api at backend `backend\src\main\java\com\oj\controller\ProblemController.java`
+
 ```java
 @GetMapping("/get")
 public BaseResponse<Problem> getProblemById(long id,  HttpServletRequest request) {
@@ -1379,7 +1381,9 @@ public BaseResponse<Problem> getProblemById(long id,  HttpServletRequest request
     return ResultUtils.success(problem);
 }
 ```
+
 2. The data is not masked, we need to convert the JSON file to js object in `frontend\src\views\problem\AddProblemView.vue`
+
 ```tsx
 const loadData = async () => {
   const problemId = route.query.id as any;
@@ -1431,7 +1435,8 @@ const loadData = async () => {
     }
   }
 };
-``` 
+```
+
 3. Use route information to check which API should we call, `updateProblemUsingPost` or `addProblemUsingPost`
 
 ![](./img/problemUpdatePage.PNG)
@@ -1444,6 +1449,7 @@ const loadData = async () => {
 2. Optimize the hidden page in the route file
 
 Use the properties `meta.hideInMenu` and `meta.access` to control in `router/routes.ts`
+
 ```tsx
 meta: {
   hideInMenu: true,
@@ -1489,4 +1495,193 @@ if (!loginUser || !loginUser.userRole) {
   loginUser = store.state.user.loginUser;
 }
 ```
+
+#### Problem List View Page(16.02.2025)
+
+> 1. Problem list can be demonstrated as a `Form` element
+> 2. We can directly reuse the problem manage page, since they are similar to some extent.
+> 3. As for the form items, we just need to keep some necessary content for user.
+
+```tsx
+const columns = [
+  {
+    title: "Id",
+    dataIndex: "id",
+  },
+  {
+    title: "Title",
+    dataIndex: "title",
+  },
+  {
+    title: "Tags",
+    slotName: "tags",
+  },
+  {
+    title: "Accepted Rate",
+    slotName: "acceptedRate",
+  },
+  {
+    title: "Created Date",
+    dataIndex: "createTime",
+  },
+  {
+    slotName: "optional",
+  },
+];
+```
+
+> 4. Customize the rendering of form columns based on requirement.
+
+Firstly, to define a `slotName` for each column that we want to customize.
+
+```tsx
+/**
+ * give each column a slotName, with the slotName option, the customization can be implemented.
+ */
+const columns = [
+  {
+    title: "Id",
+    dataIndex: "id",
+  },
+  {
+    title: "Title",
+    dataIndex: "title",
+  },
+  {
+    title: "Tags",
+    slotName: "tags",
+  },
+  {
+    title: "Accepted Rate",
+    slotName: "acceptedRate",
+  },
+  {
+    title: "Created Date",
+    slotName: "createTime",
+  },
+  {
+    title: "Optional",
+    slotName: "optional",
+  },
+];
+```
+
+Add corresponding templates to each slotName and let the `<a-table>` element to render the them automatically.
+
+```tsx
+<template #tags="{ record }">
+  <a-space wrap>
+    <a-tag
+      v-for="(tag, index) of record.tags"
+      :key="index"
+      color="green"
+      >{{ tag }}</a-tag
+    >
+  </a-space>
+</template>
+<template #acceptedRate="{ record }">
+  {{
+    `${
+      record.submitNum && record.submitNum
+        ? record.acceptedNum / record.submitNum
+        : "0"
+    }% (${record.acceptedNum ? record.acceptedNum : "0"}/${
+      record.submitNum
+    })`
+  }}
+</template>
+<template #createTime="{ record }">
+  {{ moment(record.createTime).format("YYYY-MM-DD") }}
+</template>
+<template #optional="{ record }">
+  <a-space>
+    <a-button type="primary" @click="toProblemPage(record)"
+      >Edit</a-button
+    >
+  </a-space>
+</template>
+```
+Explanation:
+- For tags, render them as `<a-tag>` element using a `v-for` method
+- For accepted rate, calculate the rate using the `acceptNum` and `submitNum` value from the response of API `listProblemVoByPageUsingPost`.
+- For created time, install a npm package `moment` and render it with the format `YYYY-MM-DD`
+```sh
+npm install moment
+```
+
+> 5. Search bar implementation
+
+1. Use the Form component to get the user's searching input. 
+2. Bind the user's input with `queryCondition`. 
+3. Update the searching condition using two additional attributes. 
+```tsx
+/**
+ * Add the title and tags as the searching condition.
+ */
+const queryCondition = ref({
+  title: "",
+  tags: [],
+  pageSize: 2,
+  current: 1,
+});
+```
+4. Listen the change of queryCondition using `watchEffect()`.
+5. Add the click event handler
+```tsx
+const doSearch = () => {
+  queryCondition.value = {
+    ...queryCondition.value,
+    current: 1,
+  };
+};
+
+/**
+ * listen the change of loadDate, for example:
+ * when the variable queryCondition.current change, then do the page reload
+ */
+watchEffect(() => {
+  loadData();
+});
+```
+
+#### View Problem Page (Online Solution Code Editing Page)
+
+> Add route index
+
+In `router/route.ts`, add a route to path `/view/problem/:id`
+```tsx
+{
+  path: "/view/problem/:id",
+  name: "View Problem",
+  component: ViewProblemView,
+  props: true,
+  meta: {
+    hideInMenu: true,
+    access: ACCESS_ENUM.USER,
+  },
+},
+```
+Add `props: true` to load page dynamically based on `problemId`.
+
+> Define Layout
+
+Some classic online judgement system such as `LeetCode` will have one side for problem viewing, and the other side for code editing:
+
+![](./img/LeetCodeProblemLayout.PNG)
+
+- Left side: Problem description
+- Right side: Code editor
+
+**Left Side: Problem description**
+1. Add tabs for showing `Problem`, `Solution`, and `Comment`
+2. Define the `MdViewer.vue` component for readonly markdown text viewing.
+3. Use the `description` component form `ArcoDesign` https://arco.design/vue/component/descriptions showing the judge configuration setting.
+
+**Right Side: Code editor**
+1. Use `select` component for selecting programming language of the solution code. https://arco.design/vue/component/select
+2. Implement the language highlight in `monaco-editor` when switching language.
+
+**Final Look of Problem Viewing Page**
+
+![](./img/ProblemViewPage.PNG)
 

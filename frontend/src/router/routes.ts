@@ -1,5 +1,4 @@
 import { RouteRecordRaw } from "vue-router";
-import AdminView from "@/views/AdminView.vue";
 import NoAuthView from "@/views/NoAuthView.vue";
 import ACCESS_ENUM from "@/access/accessEnum";
 import UserLoginView from "@/views/user/UserLoginView.vue";
@@ -8,6 +7,8 @@ import UserLayout from "@/layouts/UserLayout.vue";
 import ExampleView from "@/views/ExampleView.vue";
 import AddProblemView from "@/views/problem/AddProblemView.vue";
 import ManageProblemView from "@/views/problem/ManageProblemView.vue";
+import ProblemsView from "@/views/problem/ProblemsView.vue";
+import ViewProblemView from "@/views/problem/ViewProblemView.vue";
 
 export const routes: Array<RouteRecordRaw> = [
   {
@@ -32,8 +33,23 @@ export const routes: Array<RouteRecordRaw> = [
   },
   {
     path: "/",
-    name: "Problems",
+    name: "Home",
     component: ExampleView,
+  },
+  {
+    path: "/problems",
+    name: "Problems",
+    component: ProblemsView,
+  },
+  {
+    path: "/view/problem/:id",
+    name: "View Problem",
+    component: ViewProblemView,
+    props: true,
+    meta: {
+      hideInMenu: true,
+      access: ACCESS_ENUM.USER,
+    },
   },
   {
     path: "/add/problem",
