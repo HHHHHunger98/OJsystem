@@ -1,54 +1,54 @@
-# 公共配置文件
+# Common configuration file
 # @author <a href="https://github.com/liyupi">程序员鱼皮</a>
+# @author Hhhhhunger
 # @from <a href="https://yupi.icu">编程导航知识星球</a>
 spring:
   application:
     name: oj-backend
-  # 默认 dev 环境
+  # default dev environment
   profiles:
     active: dev
-  # 支持 swagger3
+  # support swagger3
   mvc:
     pathmatch:
       matching-strategy: ant_path_matcher
-  # session 配置
+  # session configuration
   session:
-    # todo 取消注释开启分布式 session（须先配置 Redis）
+    # todo uncomment to use distributed session(need to configure the Redis first)
     # store-type: redis
-    # 30 天过期
+    # Expire in 30 days
     timeout: 2592000
-  # 数据库配置
-  # todo 需替换配置
+  # Database configuration
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/ojsystem_db
     username: root
     password: 2024mySQL...
-  # Redis 配置
-  # todo 需替换配置，然后取消注释
+  # Redis configuration
+  # todo uncomment to configure when needed
 #  redis:
 #    database: 1
 #    host: localhost
 #    port: 6379
 #    timeout: 5000
 #    password: 123456
-  # Elasticsearch 配置
-  # todo 需替换配置，然后取消注释
+  # Elasticsearch configuration
+  # todo uncomment to configure when needed
 #  elasticsearch:
 #    uris: http://localhost:9200
 #    username: root
 #    password: 123456
-  # 文件上传
+  # file upload
   servlet:
     multipart:
-      # 大小限制
+      # size limit
       max-file-size: 10MB
 server:
   address: 0.0.0.0
   port: 8121
   servlet:
     context-path: /api
-    # cookie 30 天过期
+    # Cookie with a 30-day expiration
     session:
       cookie:
         max-age: 2592000
@@ -58,13 +58,13 @@ mybatis-plus:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
   global-config:
     db-config:
-      logic-delete-field: isDelete # 全局逻辑删除的实体字段名
-      logic-delete-value: 1 # 逻辑已删除值（默认为 1）
-      logic-not-delete-value: 0 # 逻辑未删除值（默认为 0）
-# 微信相关
+      logic-delete-field: isDelete # Global logic delete field for entities
+      logic-delete-value: 1 # logically deleted (1 by default)
+      logic-not-delete-value: 0 # logically undeleted (0 by default)
+# WeChat Platform (Unnecessary in this project)
 wx:
-  # 微信公众平台
-  # todo 需替换配置
+  # WeChat Platform
+  # todo configure when needed
   mp:
     token: xxx
     aesKey: xxx
@@ -77,16 +77,19 @@ wx:
         host: 127.0.0.1
         port: 6379
       type: Memory
-  # 微信开放平台
-  # todo 需替换配置
+  # WeChat Open Official Platform
+  # todo configure when needed
   open:
     appId: xxx
     appSecret: xxx
-# 对象存储
-# todo 需替换配置
+# Object Storage
+# todo configure when needed
 cos:
   client:
     accessKey: xxx
     secretKey: xxx
     region: xxx
     bucket: xxx
+# code sandbox configuration
+codesandbox:
+  type: example

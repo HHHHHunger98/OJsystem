@@ -86,7 +86,7 @@ const total = ref(0);
 const queryCondition = ref({
   title: "",
   tags: [],
-  pageSize: 2,
+  pageSize: 10,
   current: 1,
 });
 const router = useRouter();

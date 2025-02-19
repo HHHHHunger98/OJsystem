@@ -1685,3 +1685,180 @@ Some classic online judgement system such as `LeetCode` will have one side for p
 
 ![](./img/ProblemViewPage.PNG)
 
+## Code Judging Module And Code Sandbox
+
+> Goal: Go through the entire business flow
+
+### Relationship between code judging module and code sandbox
+
+- Code Judging Module:
+  
+  Call the code sandbox, submit the code and input cases to code sandbox, let the sandbox to execute the code.
+
+- Code Sandbox:
+
+  Take over the code and input cases, execute the code, and return the result, doesn't take over the judging logic
+
+> FlowChart of communication between code judging module and sandbox
+
+![](./img/judgeModuleAndSandbox.PNG)
+
+**In this way, code judging module and code sandbox are decoupled, and the code sandbox can be reused as an independent service.**
+
+> Why the input cases should be sent in groups, and the output results should be generated in groups
+
+**precondition: We have multiple test cases for each problem**
+
+**Reason**: Save time and resources, as we only need to call the sandbox service for once.
+reduce the compilation time, recording time, and data transfer time
+(Batch processing)
+
+### Code Sandbox Implementation
+
+#### Define the code sandbox interface
+
+To improve the generality, We can define the code sandbox as an interface, so that we don't need to call the implementation class directly.
+When we want to use some other code sandbox implementation class, there is no need to rewrite the call methods.
+
+#### Define different ways of code sandbox implementation
+
+1. Example code sandbox
+2. Remote code sandbox
+3. Third-party code sandboxes: call the existing available code sandboxes from third-parties https://github.com/criyle/go-judge
+
+#### Implement the unit test for validation of execution of sandbox
+
+```java
+@SpringBootTest
+class CodeSandboxTest {
+
+    @Test
+    void executeCode() {
+        CodeSandbox codeSandbox = new RemoteCodeSandbox();
+        String code = "int main() {return 0;}";
+        String language = ProblemSubmitLanguageEnum.JAVA.getValue();
+        List<String> inputList = Arrays.asList("1 2","3 4");
+        ExecuteCodeRequest executeCodeRequest = ExecuteCodeRequest.builder()
+                .code(code)
+                .language(language)
+                .inputList(inputList)
+                .build();
+        ExecuteCodeResponse executeCodeResponse = codeSandbox.executeCode(executeCodeRequest);
+        Assertions.assertNotNull(executeCodeResponse);
+    }
+}
+```
+
+> Problem: The code for instantiating a new code sandbox object is hardcoded, making it difficult to replace them with instances of a different code sandbox in the future.
+#### Using `factory pattern` to instantiate object based on user input(19.02.2025)
+
+Here we can use static **`factory pattern`**: easy to implement, fulfill our requirements.
+
+```java
+/**
+ * Code sandbox factory: instantiate a specific code sandbox object based on user input
+ */
+public class CodeSandboxFactory {
+
+    /**
+     * Instantiate a CodeSandbox object.
+     * @param type sandbox type
+     * @return
+     */
+    public static CodeSandbox newInstance(String type) {
+        switch (type) {
+            case "example":
+                return new ExampleCodeSandbox();
+            case "remote":
+                return new RemoteCodeSandbox();
+            case "thirdParty":
+                return new ThirdPartyCodeSandbox();
+            default:
+                return new ExampleCodeSandbox();
+        }
+    }
+}
+
+```
+
+#### Parameterization of sandbox type
+
+Parameterize the configuration of code sandbox type
+
+Add the following configuration into `application.yml`
+```yml
+# code sandbox configuration
+codesandbox:
+  type: example
+```
+In `Spring Bean` using the `@Value` annotation to inject properties in java class
+```java
+@Value("${codesandbox.type:example}")
+private String type;
+```
+
+#### Code sandbox execution logging
+
+> Purpose:
+
+In order to simplify the management, before calling the code sandbox, we can log the request information; After the calling, log the response information. 
+
+> Solution:
+
+Using the `proxy pattern` to enhance the ability of code sandbox for logging information before and after the calling.
+
+Create a proxy class `CodeSandboxProxy` for enhance the calling process by logging the request and response information.
+
+```java
+@Slf4j
+public class CodeSandboxProxy implements CodeSandbox {
+
+  private final CodeSandbox codeSandbox;
+
+  public CodeSandboxProxy(CodeSandbox codeSandbox) {
+      this.codeSandbox = codeSandbox;
+  }
+
+  @Override
+  public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
+
+      log.info("Code sandbox request information:{}", executeCodeRequest.toString());
+      ExecuteCodeResponse executeCodeResponse = codeSandbox.executeCode(executeCodeRequest);
+      log.info("Code sandbox response information:{}", executeCodeResponse.toString());
+      return executeCodeResponse;
+  }
+}
+```
+
+Usage of proxy pattern
+```java
+void executeCodeByProxy() {
+  CodeSandbox codeSandbox = CodeSandboxFactory.newInstance(type);
+  codeSandbox = new CodeSandboxProxy(codeSandbox);
+
+  ...
+}
+```
+
+#### Implement the example code sandbox
+
+```java
+@Slf4j
+public class ExampleCodeSandbox implements CodeSandbox {
+  @Override
+  public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
+      List<String> inputList = executeCodeRequest.getInputList();
+      ExecuteCodeResponse executeCodeResponse = new ExecuteCodeResponse();
+      executeCodeResponse.setOutputList(inputList);
+      executeCodeResponse.setMessage("execution succeed");
+      JudgeInfo judgeInfo = new JudgeInfo();
+      judgeInfo.setMessage(ProblemSubmitStatusEnum.ACCEPTED.getText());
+      judgeInfo.setTime(100L);
+      judgeInfo.setSpace(100L);
+      executeCodeResponse.setStatus(ProblemSubmitStatusEnum.ACCEPTED.getValue());
+      executeCodeResponse.setJudgeInfo(judgeInfo);
+
+      return executeCodeResponse;
+  }
+}
+```

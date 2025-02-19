@@ -29,7 +29,7 @@ public enum ProblemSubmitLanguageEnum {
     }
 
     /**
-     * 获取值列表
+     * get values
      *
      * @return
      */
@@ -38,7 +38,7 @@ public enum ProblemSubmitLanguageEnum {
     }
 
     /**
-     * 根据 value 获取枚举
+     * get enumeration by value
      *
      * @param value
      * @return
