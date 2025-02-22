@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 public enum JudgeInfoEnum {
 
     ACCEPTED("Submission accepted", "Accepted"),
+    JUDGING("Submission judging", "Judging"),
     WRONG("Submission failed", "Wrong"),
     COMPILE_ERROR("Compile error", "Compile error"),
     MEM_LIMIT_EXCEEDED("Memory Limit Exceeded", "Memory limit exceeded"),

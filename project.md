@@ -1713,6 +1713,54 @@ Some classic online judgement system such as `LeetCode` will have one side for p
 reduce the compilation time, recording time, and data transfer time
 (Batch processing)
 
+### Code Execution Request and Response
+
+We firstly define the request and response models for code execution
+- ExecuteCodeRequest
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExecuteCodeRequest {
+
+    private List<String> inputList;
+
+    private String code;
+
+    private String language;
+}
+```
+- ExecuteCodeResponse
+```java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class ExecuteCodeResponse {
+
+    /**
+     * output group
+     */
+    private List<String> outputList;
+
+    /**
+     * execution information
+     */
+    private String message;
+
+    /**
+     * execution status
+     */
+    private Integer status;
+
+    /**
+     * judging information
+     */
+    private JudgeInfo judgeInfo;
+}
+```
+
 ### Code Sandbox Implementation
 
 #### Define the code sandbox interface
@@ -1859,6 +1907,73 @@ public class ExampleCodeSandbox implements CodeSandbox {
       executeCodeResponse.setJudgeInfo(judgeInfo);
 
       return executeCodeResponse;
+  }
+}
+```
+
+### Code Judge Service Implementation (21.02.2025)
+
+#### Business process
+
+1. Enter the submission Id, get the corresponding problem and submission information, including solution and language
+2. Check the judging status of the submission, if the submission is not `pending`, then no need to execute the code again
+3. Update the judging status `status` from `pending` to `judging`, prevent from repeat execution
+4. Call the code sandbox, get the execution output
+5. According to the execution result, update the judging status and information
+
+> Judging Logic
+
+As we get execution `outputList` from the `executeCodeResponse`.
+We can do the following steps to judge the execution output result.
+1. First, the input and output size should be the same
+2. Iterate through the outputList and the expectedOutputList to check whether they are equal
+3. Check whether the space and time exceed
+4. And some other errors
+
+#### Judging Strategy (Strategy Pattern)
+
+The judging strategy can be diverse, for instance, the execution of java code in sandbox may take more time than other language, so **it is necessary to implement different judging strategy**
+
+To get rid of redundant `if else` or `switch case`, we can use the strategy pattern 
+
+> Default Strategy
+
+```java
+/**
+ * Default judging strategy based on default context
+ */
+public class DefaultStrategy implements JudgeStrategy {
+  @Override
+  public JudgeInfo doJudge(JudgeContext judgeContext) {
+    ...
+  }
+}
+```
+#### Judging Manager
+To decide which judging strategy to be used. To simplify the code of the caller for judging. Abstract the calling process of solution judging.
+
+- create a new class `./judge/JudgeManager`
+
+```java
+/**
+ * Manager for judging strategy (simplify the code of caller)
+ */
+@Service
+public class JudgeManager {
+
+  /**
+   * Do submit with a specific strategy
+   * @param judgeContext
+   * @return
+   */
+  JudgeInfo doJudge(JudgeContext judgeContext) {
+      ProblemSubmit problemSubmit = judgeContext.getProblemSubmit();
+      String language = problemSubmit.getLanguage();
+      JudgeStrategy judgeStrategy = new DefaultStrategy();
+      if ("java".equals(language)) {
+          judgeStrategy = new JavaJudgeStrategy();
+      }
+      return judgeStrategy.doJudge(judgeContext);
   }
 }
 ```

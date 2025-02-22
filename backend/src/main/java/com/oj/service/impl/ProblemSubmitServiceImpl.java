@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.oj.common.ErrorCode;
 import com.oj.constant.CommonConstant;
 import com.oj.exception.BusinessException;
+import com.oj.judge.JudgeService;
 import com.oj.model.dto.problemsubmit.ProblemSubmitQueryRequest;
 import com.oj.model.dto.problemsubmit.ProblemSubmitAddRequest;
 import com.oj.model.entity.*;
@@ -20,14 +21,14 @@ import com.oj.utils.SqlUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 
 import javax.annotation.Resource;
-import javax.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
 /**
@@ -43,6 +44,10 @@ public class ProblemSubmitServiceImpl extends ServiceImpl<ProblemSubmitMapper, P
 
     @Resource
     private UserService userService;
+
+    @Lazy
+    @Resource
+    private JudgeService judgeService;
 
     /**
      * problem submission
@@ -80,6 +85,12 @@ public class ProblemSubmitServiceImpl extends ServiceImpl<ProblemSubmitMapper, P
         if (!save) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "Problem submit failed");
         }
+        
+        // code judging service
+        CompletableFuture.runAsync(() -> {
+            judgeService.doJudge(problemSubmit.getId());
+        });
+        
         return problemSubmit.getId();
 
 
