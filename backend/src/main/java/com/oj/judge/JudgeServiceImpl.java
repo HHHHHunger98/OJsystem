@@ -10,7 +10,7 @@ import com.oj.judge.codesandbox.model.ExecuteCodeRequest;
 import com.oj.judge.codesandbox.model.ExecuteCodeResponse;
 import com.oj.judge.judgestrategy.JudgeContext;
 import com.oj.model.dto.problem.JudgeCase;
-import com.oj.model.dto.problemsubmit.JudgeInfo;
+import com.oj.judge.codesandbox.model.JudgeInfo;
 import com.oj.model.entity.Problem;
 import com.oj.model.entity.ProblemSubmit;
 import com.oj.model.enums.ProblemSubmitStatusEnum;

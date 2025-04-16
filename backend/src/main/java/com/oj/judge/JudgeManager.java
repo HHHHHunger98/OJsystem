@@ -4,7 +4,7 @@ import com.oj.judge.judgestrategy.DefaultStrategy;
 import com.oj.judge.judgestrategy.JavaJudgeStrategy;
 import com.oj.judge.judgestrategy.JudgeContext;
 import com.oj.judge.judgestrategy.JudgeStrategy;
-import com.oj.model.dto.problemsubmit.JudgeInfo;
+import com.oj.judge.codesandbox.model.JudgeInfo;
 
 import com.oj.model.entity.ProblemSubmit;
 import org.springframework.stereotype.Service;

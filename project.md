@@ -1977,3 +1977,991 @@ public class JudgeManager {
   }
 }
 ```
+
+### Code Sandbox
+
+> Code Sandbox: responsible for execute the code solution from user client, and return the execution result to the code judge service layer
+
+#### Implementation plan (04.03.2025)
+
+1. Bug and optimization
+2. Code sandbox for java language
+3. Code sandbox based on docker
+
+#### Bug and optimization
+
+> Monaco editor language highlight when switching language does not work
+
+Solution:
+
+Using watch to listen the change of language property, update dynamically the language of monaco editor
+```tsx
+watch(
+  () => props.language,
+  () => {
+    if (codeEditor.value) {
+      monaco.editor.setModelLanguage(
+        toRaw(codeEditor.value).getModel(),
+        props.language
+      );
+    }
+  }
+);
+```
+#### Code sandbox for java language
+
+protogenetic code sandbox for java: independent from third-party libraries, use the most cleanest and original way to implement the code sandbox utility.
+
+> The Code Sandbox should complete:
+
+1. Receive code from user
+2. Compile the code with `javac` 
+3. Execute the code with `java`
+
+> Process of compile and execute the code from user
+
+1. Compile the code
+```sh
+javac -encoding utf-8 ./Main.java
+```
+2. Execute the compiled code
+```sh
+java -cp . Main 1 2
+```
+
+**In real OJ system, the class name is specified by default, users are not allowed to change it or use other name. So, we strict the class name by specifying it to `Main`**
+
+```java
+public class Main {
+
+    public static void main(String[] args) {
+        int a = Integer.parseInt(args[0]);
+        int b = Integer.parseInt(args[1]);
+
+        System.out.println("Result: " + (a + b));
+
+    }
+}
+```
+
+> Core of sandbox implementation
+
+- Core Idea: Using scripts to automate the process of compile -> execute
+- Core Tool: Java Process 
+- Key steps:
+  1. Store the user input into a file
+  2. Compile the code -> get the `.class` file
+  3. Execute the code -> get the execution result
+  4. Collect all the execution info
+  5. File cleanup
+  6. Error handling
+
+> 1. Save the user input in file
+
+- Using `hutool` utils package
+```xml
+<dependency>
+    <groupId>cn.hutool</groupId>
+    <artifactId>hutool-all</artifactId>
+    <version>5.8.8</version>
+</dependency>
+```
+
+- Make new directory, to isolate the code from different user, to improve the maintainability
+```java
+// 1. Save the user code in file
+List<String> inputList = executeCodeRequest.getInputList();
+String code = executeCodeRequest.getCode();
+String language = executeCodeRequest.getLanguage();
+
+String userDir = System.getProperty("user.dir");
+String userCodePathName = userDir + File.separator + USER_CODE_DIR_NAME;
+
+// Check whether the code dir exists.
+if (!FileUtil.exist(userCodePathName)) {
+    FileUtil.mkdir(userCodePathName);
+}
+
+// Isolate the user code in different dir to void class name conflict
+String userCodeParentPath = userCodePathName + File.separator + UUID.randomUUID();
+String userCodePath = userCodeParentPath + File.separator + USER_CODE_FILE_NAME;
+File userCodeFile = FileUtil.writeString(code, userCodePath, StandardCharsets.UTF_8);
+```
+
+> 2. Use java to execute the compiling process
+
+To execute the user code:
+```java
+String compileCmd = String.format("javac -encoding utf-8 %s", userCodeFile.getAbsolutePath());
+Process compileProcess = Runtime.getRuntime().exec(compileCmd);
+```
+To get the console output info by using `exitValue`
+```java
+// 2. Compile the user code -> .class file
+try {
+    Process compileProcess = Runtime.getRuntime().exec(compileCmd);
+    int exitValue = compileProcess.waitFor();
+    if (exitValue == 0) {
+        // Exit normally
+        System.out.println("compile succeed, exit value: " + exitValue);
+        // Read the process output line by line
+        BufferedReader reader = new BufferedReader(new InputStreamReader(compileProcess.getInputStream()));
+        String compileLine;
+        StringBuilder compileResult = new StringBuilder();
+        while ((compileLine = reader.readLine()) != null) {
+            compileResult.append(compileLine);
+        }
+        System.out.println(compileResult);
+    } else {
+        // Exit abnormally
+        System.out.println("compile failed, exit value: " + exitValue);
+        // Read the process output line by line
+        BufferedReader reader = new BufferedReader(new InputStreamReader(compileProcess.getInputStream()));
+        String compileLine;
+        StringBuilder compileErrorResult = new StringBuilder();
+        while ((compileLine = reader.readLine()) != null) {
+            compileErrorResult.append(compileLine);
+        }
+        // Read the process error output line by line
+        BufferedReader errorReader = new BufferedReader(new InputStreamReader(compileProcess.getErrorStream()));
+        String errorLine;
+        while ((errorLine = errorReader.readLine()) != null) {
+            compileErrorResult.append(errorLine);
+        }
+        System.out.println(compileErrorResult);
+    }
+} catch (IOException | InterruptedException e) {
+    throw new RuntimeException(e);
+}
+```
+
+> 3. Execute the code -> get the execution result
+
+```java
+// 3. Execute the code -> get the execution result
+for (String inputArgs: inputList) {
+    String runCmd = String.format("java -cp %s Main %s", userCodeParentPath, inputArgs);
+    try {
+        Process runProcess = Runtime.getRuntime().exec(runCmd);
+        ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(runProcess, "run");
+        System.out.println(executeMessage);
+    } catch (Exception e) {
+        throw new RuntimeException(e);
+    }
+}
+```
+
+> 4. Collect all the execution info
+
+Get the code execute time with the `org.springframework.util.StopWatch`
+```java
+import org.springframework.util.StopWatch;
+
+StopWatch stopWatch = new StopWatch();
+stopWatch.start();
+stopWatch.stop();
+executeMessage.setRunTime(stopWatch.getTotalTimeMillis());
+```
+Since there are many test cases, each case will have an execute time, We can use the maximum value to represent the actual run time. And use it for the further comparison(To check whether the run time is within the time limit).
+
+```java
+// 4. Collect all the execution info
+  ExecuteCodeResponse executeCodeResponse = new ExecuteCodeResponse();
+  List<String> outputList = new ArrayList<>();
+  long maxTime = 0;
+  for (ExecuteMessage executeMessage: executeMessageList) {
+      String errorMessage = executeMessage.getErrorMessage();
+      if (StrUtil.isNotBlank(errorMessage)) {
+          executeCodeResponse.setMessage(errorMessage);
+          executeCodeResponse.setStatus(3);
+          break;
+      }
+      Long runTime = executeMessage.getRunTime();
+      if (runTime != null) {
+          maxTime = Math.max(maxTime, runTime);
+      }
+      outputList.add(executeMessage.getMessage());
+  }
+  if (outputList.size() == executeMessageList.size()) {
+      executeCodeResponse.setStatus(1);
+  }
+  executeCodeResponse.setOutputList(outputList);
+  JudgeInfo judgeInfo = new JudgeInfo();
+  judgeInfo.setTime(maxTime);
+```
+
+> 5. File cleanup
+
+Delete all the execution file in order to avoid running out of server space.
+```java
+// 5. Execution file cleanup
+if (userCodeFile.getParentFile() != null) {
+    boolean del = FileUtil.del(userCodeParentPath);
+    System.out.println("Delete " + (del ? "succeed" : "failed"));
+}
+```
+
+> 6. Error handling
+
+Encapsulate an error handling method, when the program throws an exception, return directly an error response.
+```java
+// 6. Error handling
+private ExecuteCodeResponse getErrorResponse(Throwable e) {
+    ExecuteCodeResponse executeCodeResponse = new ExecuteCodeResponse();
+    executeCodeResponse.setOutputList(new ArrayList<>());
+    executeCodeResponse.setMessage(e.getMessage());
+    executeCodeResponse.setStatus(2);
+    executeCodeResponse.setJudgeInfo(new JudgeInfo());
+    return executeCodeResponse;
+}
+```
+
+### Abnormal situation demonstration
+
+So far so good, the code sandbox service is almost implemented. The program so far can be used.
+
+However, the service is now still vulnerable. What if the user submits some terrible code?
+
+#### 1) Execution blocking & Occupies resources and does not release them.
+
+
+
+The first problem is that, when the user code execution does not finite, for example, he/she wrote an `infinite loop`
+or let the process sleep for an hour?
+
+It could be terrifying, for example, the following code asks the process do a sleep method.
+```java
+public class Main {
+  public static void main(String[] args) throws InterruptedException {
+    long ONE_HOUR = 60 * 60 * 1000L;
+    Thread.sleep(ONE_HOUR);
+    System.out.println("Sleep completed!");
+  }
+}
+```
+
+#### 2) Occupies memory and does not release them.
+
+Write code to use up memory resources on server.
+```java
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Take memory resource and never release
+ */
+public class Main {
+  public static void main(String[] args) throws InterruptedException {
+      List<byte[]> bytes = new ArrayList<byte[]>();
+      while (true) {
+          bytes.add(new byte[10000]);
+      }
+  }
+}
+```
+In actual execution, when memory usage reaches a certain amount of space, the program will automatically report an error. `java.lang.OutOfMemoryError: Java heap space`
+
+#### 3) Read files on server through user code, file information leakage
+
+Get the file using relative path
+```java
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+
+public class Main {
+  public static void main(String[] args) throws InterruptedException {
+      String userDir = System.getProperty("user.dir");
+      String filePath = userDir + File.separator + "src" + File.separator + "main" + File.separator + "resources" + File.separator + "application.yml";
+      List<String> alllines = Files.readAllLines(Paths.get(filePath));
+      System.out.println(String.join("\n", alllines));
+  }
+}
+```
+
+#### 4) Write to file through user code, Unauthorized implantation of Trojans
+
+When executing user submitted code, we should be aware of the writing-to-file operation. User may submit a Trojans to your server. It is necessary to check it before execute or prevent the server from such terrible code.
+
+For example, user code write to a file `trojans.bat`:
+```java
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+
+public class Main {
+  public static void main(String[] args) throws InterruptedException {
+      String userDir = System.getProperty("user.dir");
+      String filePath = userDir + File.separator + "src" + File.separator + "main" + File.separator + "resources" + File.separator + "trojans.bat";
+      String vulnerableProgram = "java -version 2>&1";
+      Files.write(Paths.get(filePath), Arrays.asList(vulnerableProgram));
+      System.out.println("Vulnerable program executed");
+  }
+}
+```
+
+#### 5) Execute external program(vulnerable program)
+
+Call the process and run external program through user code
+```java
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.List;
+
+/**
+ * Write to files in the server, vulnerable data can be injected into server.
+ */
+public class Main {
+  public static void main(String[] args) throws InterruptedException {
+      String userDir = System.getProperty("user.dir");
+      String filePath = userDir + File.separator + "src" + File.separator + "main" + File.separator + "resources" + File.separator + "trojans.bat";
+      String vulnerableProgram = "java -version 2>&1";
+      Files.write(Paths.get(filePath), Arrays.asList(vulnerableProgram));
+      System.out.println("Vulnerable file wrotten");
+  }
+}
+```
+#### 6) Call system function through user code
+
+Execute system call command such as `rm -rf /.*`, `ls -al`, etc.
+
+### Solution to the abnormal situations
+For those abnormal situations above, there are following solutions:
+1. Timeout control
+
+2. Limited resource allocation
+
+3. Code restriction - whitelist-blacklist
+
+4. User permission restriction(File, Network, Execution)
+
+5. Isolation of the execution environment
+
+#### 1) Timeout control
+Using a `Daemon` thread to interrupt the process when time out.
+```java
+Process runProcess = Runtime.getRuntime().exec(runCmd);
+// Timeout control for system security, throw an exception in case of execution timeout
+new Thread(() -> {
+    try {
+        Thread.sleep(TIME_OUT);
+        System.out.println("Execution time out");
+        runProcess.destroy();
+    } catch (InterruptedException e) {
+        throw new RuntimeException(e);
+    }
+}).start();
+```
+#### 2) Limited resource allocation
+Limit the assigned maximum heap space for each JAVA program in JVM, for example, let say `256MB`
+
+> Solution: Specify the JVM parameters:
+> 1. `-Xmx256m`: specifies the maximum memory allocation pool for a Java Virtual Machine.
+> 2. `-Xms`: specifies the initial memory allocation pool.
+
+```java
+String runCmd = String.format("java -Xmx256m -Dfile.encoding=UTF-8 -cp %s Main %s", userCodeParentPath, inputArgs);
+```
+
+**Drawback**: `-Xmx` and `-Xms` parameters are the actual assigned memory size.
+
+For more strict memory control, should be done on the system level, not on the JVM level.
+
+For Linux system, `cgroup` can be used to limit, account for, and isolate the resource usage of a collections of processes.
+
+#### 3) Code restriction - whitelist-blacklist
+
+Using a blacklist to ban the possible bad operations from user code.
+
+```java
+// Word tree for checking the existence of banned keywords
+private static final WordTree WORD_TREE;
+
+static {
+    // Initial the word tree for banned keywords checking.
+    WORD_TREE = new WordTree();
+    WORD_TREE.addWords(blackList);
+}
+
+
+// Validate whether the user code contains some banned keywords.
+FoundWord foundWord = WORD_TREE.matchWord(code);
+if (foundWord != null) {
+    System.out.println("User code contains banned word: " + foundWord.getFoundWord());
+    return null;
+}
+```
+
+#### 4) User permission restriction(File, Network, Execution)
+
+Restrict the user access to files, network, cpu, memory, and other computer resources.
+
+> Java Security Manager: A mechanism in JVM for safely executing Java programs, can be used for supporting more stringent limitation of memory usage and resources access.
+
+```java
+public class DefaultSecurityManager extends SecurityManager {
+
+  @Override
+  public void checkRead(String file) {
+      System.out.println(file);
+      if (file.contains("")) {
+          return;
+      }
+      throw new SecurityException("Read Permission Deny" + file);
+  }
+
+  @Override
+  public void checkWrite(String file) {
+      throw new SecurityException("Write Permission Deny" + file);
+  }
+}
+```
+
+- Pros
+  - Flexible, we can customize the required security checking rules
+  - Easy to implement, inherit from the `SecurityManager`
+- Contras
+  - Deprecated since Java 17 and removed in Java 21
+  - The granularity is too fine
+  - The Security Manager is java-based, there may be bugs.
+  - The complexity 
+
+#### 5) Isolation of the execution environment
+
+> Idea: On the system level, isolate the user program into a sandbox, make them stay away from the server, so that the execution of user program will not effect the server
+
+Solution: Using container technology, such as Docker or using cgroup
+
+### Implementation of code sandbox using docker
+
+1. What is docker?
+2. Basic usage of docker
+   1. Command line-based docker usage
+   2. Java-based docker usage
+3. How to implement code sandbox using docker
+4. How to improve the security of docker-based sandbox
+
+#### What is docker? Why we need it?
+
+Docker is a container technology, it can be used for improving the robustness of systems, we isolate the different user programs from the local server, so that they won't affect the system.
+
+A container is an encapsulation of apps, services, and environment. It ensures that the execution of programs is in isolated, private environment.
+
+#### Docker basics
+
+> Image: A Docker image is a read-only blueprint used to create containers. It is a lightweight executable package that includes everything needed for running a software.
+
+> Container: Use image to create an execution environment, we can run multiple programs in one container, can be regarded as a individual computer.
+
+> Dockerfile: A Dockerfile is a script containing instructions to assemble an image.
+
+![](./img/docker.png)
+
+> Docker kernel:
+
+1) Docker is running on the linux kernel
+2) CGroups: It achieves the resource isolation of containers.
+3) Network: It achieves the network isolation of containers.
+4) Namespace: It can isolate the processes in different namespaces, each container can have their own namespace.Different namespaces will not affect each other.
+5) Storage: The files in the containers are isolated with each other, but you can still access the files from the host.
+
+![](./img/dockerKernel.png)
+
+> Docker compose: It is a tool that helps you define and run multi-container Docker applications using a simple YAML file
+
+> Image repository: Docker hub
+
+#### Docker basic usage - Using Terminal
+
+1. Check commands usage
+```sh
+docker --help
+```
+2. Pull image from remote repository
+```sh
+docker pull hello-world
+```
+3. Create a container using image
+```sh
+sudo docker create hello-world
+```
+4. Check the container status
+```sh
+sudo docker ps -a 
+```
+5. Start the container 
+```sh
+sudo docker start [container_name]
+```
+6. Check the logs
+```sh
+sudo docker logs
+```
+7. Delete container
+```sh
+sudo docker rm [container_name]
+```
+8. Delete image, force delete
+```sh
+sudo docker rmi [image_name] -f
+```
+
+9. Push docker image
+
+#### Implementation steps:
+
+1. Store the user input into a file
+2. Compile the code -> get the `.class` file
+3. Upload the compiled executable file to docker container environment
+4. Execute the java program -> get the execution result
+5. Collect all the execution info
+6. File cleanup
+7. Error handling
+
+> Step 1 and 2 are the same as in Native Java Sandbox
+
+> 3. Upload the compiled executable file to docker container environment.
+
+  To Define and create the container, there are two different ways for achieving this.
+  1. Based on the existing docker image, such as `openjdk-8`, and then copy the compiled java program to container. -> Suitable for new project
+  2. Completely self-defined container: suitable for more mature project.
+
+  **Question**: Should we create different container for each test cases? Or each container only executes one java cmd?
+
+  **Answer**: Waste of time and resources, we should create an interactive container for taking multiple inputs.
+
+  When creating container, we can specify the mapping of file path(Volume), so that we can sync the local file to container.
+
+```java
+  // Create container
+  CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(image);
+  HostConfig hostConfig = new HostConfig();
+  // Set the memory constraint
+  hostConfig.withMemory(100*1000*1000L);
+  // Set the cpu constraint
+  hostConfig.withCpuCount(1L);
+  hostConfig.setBinds(new Bind(userCodeParentPath, new Volume("/app")));
+  CreateContainerResponse createContainerResponse = createContainerCmd
+          .withAttachStderr(true)
+          .withAttachStderr(true)
+          .withAttachStdout(true)
+          .withTty(true)
+          .exec();
+  System.out.println("Create Container: " + createContainerResponse);
+  String containerId = createContainerResponse.getId();
+```
+
+> 4. Execute the java program -> get the execution result
+
+Docker execute cmd in container
+```sh
+docker exec [options] container command [Arg]
+```
+
+Docker run user program example
+```sh
+docker exec [container_name] java -cp /app Main 1 2
+```
+
+Define the execute cmd in container
+```java
+String[] inputArgsArray = inputArg.split(" ");
+String[] cmdArray = ArrayUtil.append(new String[] {"java", "-cp", "/app", "Main"}, inputArgsArray)  ;
+ExecCreateCmdResponse execCreateCmdResponse = dockerClient.execCreateCmd(containerId)
+        .withCmd(cmdArray)
+        .withAttachStderr(true)
+        .withAttachStdin(true)
+        .withAttachStdout(true)
+        .exec();
+```
+
+Execute the cmd in container
+```java
+String execId = execCreateCmdResponse.getId();
+ExecStartResultCallback execStartResultCallback = new ExecStartResultCallback() {
+    @Override
+    public void onNext(Frame frame) {
+        StreamType streamType = frame.getStreamType();
+        if (streamType == StreamType.STDERR) {
+            System.out.println("Execution Failed: " + new String(frame.getPayload(), StandardCharsets.UTF_8));
+        } else {
+            System.out.println("Execution Succeeded: " + new String(frame.getPayload(), StandardCharsets.UTF_8));
+        }
+        super.onNext(frame);
+    }
+};
+try {
+    dockerClient.execStartCmd(execId)
+            .exec(execStartResultCallback)
+            .awaitCompletion();
+} catch (InterruptedException e) {
+    System.out.println("Exec start failed");
+    throw new RuntimeException(e);
+}
+```
+
+> 5. Collect all the execution info
+
+```java
+// Record the memory usage
+final long[] maxMemory = {0L};
+StatsCmd statsCmd = dockerClient.statsCmd(containerId);
+statsCmd.exec(new ResultCallback<Statistics>() {
+    @Override
+    public void onStart(Closeable closeable) {
+
+    }
+
+    @Override
+    public void onNext(Statistics statistics) {
+        System.out.println("memory usage" + statistics.getMemoryStats().getUsage());
+        maxMemory[0] = Math.max(maxMemory[0], statistics.getMemoryStats().getUsage());
+    }
+
+    @Override
+    public void onError(Throwable throwable) {
+
+    }
+
+    @Override
+    public void onComplete() {
+
+    }
+
+    @Override
+    public void close() throws IOException {
+
+    }
+});
+```
+
+```java
+// 5. Collect all the execution info
+        ExecuteCodeResponse executeCodeResponse = new ExecuteCodeResponse();
+        List<String> outputList = new ArrayList<>();
+        long maxTime = 0;
+        for (ExecuteMessage executeMessage: executeMessageList) {
+            String errorMessage = executeMessage.getErrorMessage();
+            if (StrUtil.isNotBlank(errorMessage)) {
+                executeCodeResponse.setMessage(errorMessage);
+                executeCodeResponse.setStatus(3);
+                break;
+            }
+            Long runTime = executeMessage.getRunTime();
+            if (runTime != null) {
+                maxTime = Math.max(maxTime, runTime);
+            }
+            outputList.add(executeMessage.getMessage());
+        }
+        if (outputList.size() == executeMessageList.size()) {
+            executeCodeResponse.setStatus(1);
+        }
+        executeCodeResponse.setOutputList(outputList);
+        JudgeInfo judgeInfo = new JudgeInfo();
+        judgeInfo.setTime(maxTime);
+
+        // 6. Execution file cleanup
+        if (userCodeFile.getParentFile() != null) {
+            boolean del = FileUtil.del(userCodeParentPath);
+            System.out.println("Delete " + (del ? "succeed" : "failed"));
+        }
+```
+
+### Docker security
+
+1. Timeout control
+
+2. Limited resource allocation
+
+3. Code restriction - whitelist-blacklist
+
+4. User permission restriction(File, Network, Execution)
+
+5. Isolation of the execution environment
+
+#### 1) Timeout control
+
+Use the parameter to control timeout
+```java
+dockerClient.execStartCmd(execId)
+                        .exec(execStartResultCallback)
+                        .awaitCompletion(TIME_OUT, TimeUnit.MICROSECONDS);
+```
+Use a boolean value to check whether the execution timed out
+If the execution completed in time, the `timedout` value will be set to `false`
+```java
+final boolean[] timedOut = {true};
+
+ExecStartResultCallback execStartResultCallback = new ExecStartResultCallback() {
+      @Override
+      public void onNext(Frame frame) {
+          StreamType streamType = frame.getStreamType();
+          if (streamType == StreamType.STDERR) {
+              errorMessage[0] = new String(frame.getPayload(), StandardCharsets.UTF_8);
+              System.out.println("Execution Failed: " + errorMessage[0]);
+          } else {
+              message[0] = new String(frame.getPayload(), StandardCharsets.UTF_8);
+              System.out.println("Execution Succeeded: " + message[0]);
+          }
+          super.onNext(frame);
+      }
+
+      @Override
+      public void onComplete() {
+          timedOut[0] = false;
+          super.onComplete();
+      }
+  };
+```
+
+#### 2) Memory usage limitation
+Specify the host configuration to achieve this:
+```java
+// Create container
+CreateContainerCmd createContainerCmd = dockerClient.createContainerCmd(image);
+HostConfig hostConfig = new HostConfig();
+// Set the memory constraint
+hostConfig.withMemory(100*1000*1000L);
+// Set the cpu constraint
+hostConfig.withCpuCount(1L);
+
+hostConfig.setBinds(new Bind(userCodeParentPath, new Volume("/app")));
+System.out.println(userCodeParentPath);
+CreateContainerResponse createContainerResponse = createContainerCmd
+        .withHostConfig(hostConfig)
+        .withAttachStderr(true)
+        .withAttachStdin(true)
+        .withAttachStdout(true)
+        .withTty(true)
+        .exec();
+```
+
+#### 3) Network resource
+Using `withNetworkDisabled(true)` to disable the network usage.
+```java
+CreateContainerResponse createContainerResponse = createContainerCmd
+                .withHostConfig(hostConfig)
+                .withNetworkDisabled(true)
+                .withAttachStderr(true)
+                .withAttachStdin(true)
+                .withAttachStdout(true)
+                .withTty(true)
+                .exec();
+```
+
+#### 4) Permission control
+
+Using Docker and Java Security Manager to prevent operations on file system on system level.
+
+### Optimization of Code Sandbox
+
+#### Using template method to generalize the calling procedure
+
+> **Core idea: The parent class defines the general process, and the subclass implements the specific steps.**
+
+Define the Java Sandbox Template
+There is a general procedure of calling code sandbox, thus we could abstract the process using template pattern
+```java
+package com.wzh.ojsystemcodesandbox;
+
+import cn.hutool.core.io.FileUtil;
+import cn.hutool.core.util.StrUtil;
+import com.wzh.ojsystemcodesandbox.model.ExecuteCodeRequest;
+import com.wzh.ojsystemcodesandbox.model.ExecuteCodeResponse;
+import com.wzh.ojsystemcodesandbox.model.ExecuteMessage;
+import com.wzh.ojsystemcodesandbox.model.JudgeInfo;
+import com.wzh.ojsystemcodesandbox.utils.ProcessUtils;
+import lombok.extern.slf4j.Slf4j;
+
+import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+
+@Slf4j
+public abstract class JavaCodeSandboxTemplate implements CodeSandbox {
+
+    // Magic values
+    private static final String USER_CODE_DIR_NAME = "tmpCode";
+    private static final String USER_CODE_FILE_NAME = "Main.java";
+    // Execution timeout
+    private static final long TIME_OUT = 10000L;
+    private static final boolean FIRST_INIT = true;
+
+    /**
+     * Save code into file
+     * @param code
+     * @return
+     */
+    public File saveCodeToFile(String code) {
+        String userDir = System.getProperty("user.dir");
+        String userCodePathName = userDir + File.separator + USER_CODE_DIR_NAME;
+
+        // Check whether the code dir exists.
+        if (!FileUtil.exist(userCodePathName)) {
+            FileUtil.mkdir(userCodePathName);
+        }
+
+        // Isolate the user code in different dir to void class name conflict
+        String userCodeParentPath = userCodePathName + File.separator + UUID.randomUUID();
+        String userCodePath = userCodeParentPath + File.separator + USER_CODE_FILE_NAME;
+        File userCodeFile = FileUtil.writeString(code, userCodePath, StandardCharsets.UTF_8);
+        return userCodeFile;
+    }
+
+    /**
+     * Compile the code
+     * @param userCodeFile
+     * @return
+     */
+    public ExecuteMessage compileFile (File userCodeFile) {
+        String compileCmd = String.format("javac -encoding utf-8 %s", userCodeFile.getAbsolutePath());
+        try {
+            Process compileProcess = Runtime.getRuntime().exec(compileCmd);
+            ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(compileProcess, "compile");
+            if (executeMessage.getExitValue() != 0) {
+                throw new RuntimeException("Compilation failed");
+            }
+            return executeMessage;
+        } catch (Exception e) {
+            // return getErrorResponse(e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Run the user code and get the execution result
+     * @param userCodeFile
+     * @param inputList
+     * @return
+     */
+    public List<ExecuteMessage> runFile (File userCodeFile, List<String> inputList) {
+        String userDir = System.getProperty("user.dir");
+        String userCodePathName = userDir + File.separator + USER_CODE_DIR_NAME;
+        String userCodeParentPath = userCodePathName + File.separator + UUID.randomUUID();
+
+        List<ExecuteMessage> executeMessageList = new ArrayList<>();
+        for (String inputArgs: inputList) {
+            String runCmd = String.format("java -Xmx256m -Dfile.encoding=UTF-8 -cp %s Main %s", userCodeParentPath, inputArgs);
+            try {
+                Process runProcess = Runtime.getRuntime().exec(runCmd);
+                // Timeout control for system security, throw an exception in case of execution timeout
+                new Thread(() -> {
+                    try {
+                        Thread.sleep(TIME_OUT);
+                        System.out.println("Execution time out");
+                        runProcess.destroy();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }).start();
+                ExecuteMessage executeMessage = ProcessUtils.runProcessAndGetMessage(runProcess, "run");
+                System.out.println(executeMessage);
+                executeMessageList.add(executeMessage);
+            } catch (Exception e) {
+                throw new RuntimeException("User program execute failed",e);
+            }
+        }
+        return executeMessageList;
+    }
+
+    /**
+     * Get the execution output result
+     * @param executeMessageList
+     * @return
+     */
+    public ExecuteCodeResponse getOutputResponse (List<ExecuteMessage> executeMessageList) {
+        ExecuteCodeResponse executeCodeResponse = new ExecuteCodeResponse();
+        List<String> outputList = new ArrayList<>();
+        long maxTime = 0;
+        for (ExecuteMessage executeMessage: executeMessageList) {
+            String errorMessage = executeMessage.getErrorMessage();
+            if (StrUtil.isNotBlank(errorMessage)) {
+                executeCodeResponse.setMessage(errorMessage);
+                executeCodeResponse.setStatus(3);
+                break;
+            }
+            Long runTime = executeMessage.getRunTime();
+            if (runTime != null) {
+                maxTime = Math.max(maxTime, runTime);
+            }
+            outputList.add(executeMessage.getMessage());
+        }
+        if (outputList.size() == executeMessageList.size()) {
+            executeCodeResponse.setStatus(1);
+        }
+        executeCodeResponse.setOutputList(outputList);
+        JudgeInfo judgeInfo = new JudgeInfo();
+        judgeInfo.setTime(maxTime);
+
+        return executeCodeResponse;
+    }
+
+    /**
+     * Delet the executable file.
+     * @param userCodeFile
+     * @return
+     */
+    public boolean deleteFile (File userCodeFile) {
+        if (userCodeFile.getParentFile() != null) {
+            String userCodeParentPath = userCodeFile.getParentFile().getAbsolutePath();
+            boolean del = FileUtil.del(userCodeParentPath);
+            System.out.println("Delete " + (del ? "succeed" : "failed"));
+            return del;
+        }
+        return true;
+    }
+
+    @Override
+    public ExecuteCodeResponse executeCode(ExecuteCodeRequest executeCodeRequest) {
+
+        List<String> inputList = executeCodeRequest.getInputList();
+        String code = executeCodeRequest.getCode();
+        String language = executeCodeRequest.getLanguage();
+
+        // 1. Save user code to file
+        File userCodeFile = saveCodeToFile(code);
+
+        // 2. Compile the user code -> .class file
+        ExecuteMessage compileFileExecuteMessage =  compileFile(userCodeFile);
+        System.out.println(compileFileExecuteMessage);
+
+        // 3. Execute the java program -> get the execution result
+        List<ExecuteMessage> executeMessageList = runFile(userCodeFile, inputList);
+
+        // 4. Collect all the execution info
+        ExecuteCodeResponse outputResponse = getOutputResponse(executeMessageList);
+
+        // 5. Execution file cleanup
+        boolean b = deleteFile(userCodeFile);
+        if (!b) {
+            log.error("delete file failed, userCodeFile={}", userCodeFile.getAbsolutePath());
+        }
+
+        return outputResponse;
+    }
+
+    // 6. Error handling
+    private ExecuteCodeResponse getErrorResponse(Throwable e) {
+        ExecuteCodeResponse executeCodeResponse = new ExecuteCodeResponse();
+        executeCodeResponse.setOutputList(new ArrayList<>());
+        executeCodeResponse.setMessage(e.getMessage());
+        executeCodeResponse.setStatus(2);
+        executeCodeResponse.setJudgeInfo(new JudgeInfo());
+        return executeCodeResponse;
+    }
+}
+
+```
+
+For improving reusability

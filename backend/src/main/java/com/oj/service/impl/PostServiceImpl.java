@@ -55,7 +55,7 @@ import org.springframework.stereotype.Service;
  */
 @Service
 @Slf4j
-public class PostServiceImpl extends ServiceImpl<PostMapper, Post> implements PostService {
+public class  PostServiceImpl extends ServiceImpl<PostMapper, Post> implements PostService {
 
     private final static Gson GSON = new Gson();
 

@@ -1,6 +1,6 @@
 package com.oj.judge.judgestrategy;
 
-import com.oj.model.dto.problemsubmit.JudgeInfo;
+import com.oj.judge.codesandbox.model.JudgeInfo;
 
 /**
  * Judging strategy

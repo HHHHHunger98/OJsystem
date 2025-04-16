@@ -3,7 +3,7 @@ package com.oj.judge.judgestrategy;
 import cn.hutool.json.JSONUtil;
 import com.oj.model.dto.problem.JudgeCase;
 import com.oj.model.dto.problem.JudgeConfig;
-import com.oj.model.dto.problemsubmit.JudgeInfo;
+import com.oj.judge.codesandbox.model.JudgeInfo;
 import com.oj.model.entity.Problem;
 import com.oj.model.enums.JudgeInfoEnum;
 
